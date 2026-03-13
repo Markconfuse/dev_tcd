@@ -1,0 +1,388 @@
+@import url('https://fonts.googleapis.com/css2?family=Merriweather:wght@300;400;700;900&family=Poppins:wght@100;200;300;400;500;600;700;800;900&family=Titillium+Web:wght@200;300;400;600;700;900&display=swap');
+
+:root {
+    --christmas-sans: 'Titillium Web',
+        sans-serif;
+    --pops-sans: 'Poppins',
+        sans-serif;
+    --merriweather-serif: 'Merriweather',
+        serif;
+}
+
+*,
+*::before,
+*::after {
+    box-sizing: border-box;
+    margin: 0;
+    padding: 0;
+}
+
+a {
+    color: inherit;
+    text-decoration: none;
+}
+
+li {
+    list-style-type: none;
+}
+
+body {
+    max-width: 100%;
+    max-height: 100%;
+    overflow: hidden;
+
+}
+
+section {
+    height: 100vh;
+    width: 100vw;
+    position: relative;
+}
+
+.overlay {
+    position: absolute;
+    inset: 0;
+    width: 100%;
+    height: 100%;
+    z-index: -20;
+    background: rgb(220, 235, 238);
+    background: linear-gradient(180deg, rgba(220, 235, 238, 1) 0%, rgba(255, 255, 255, 0.9037990196078431) 100%);
+}
+
+.path {
+    position: absolute;
+    width: 100%;
+    inset: 0;
+    background-color: white;
+    transition: .5s ease-in;
+    z-index: -10;
+    clip-path: polygon(100% 100%, 0% 100%, 0.00% 74.70%, 2.00% 74.70%, 4.00% 74.70%, 6.00% 74.70%, 8.00% 74.70%, 10.00% 74.70%, 12.00% 74.70%, 14.00% 74.70%, 16.00% 74.70%, 18.00% 74.70%, 20.00% 74.70%, 22.00% 74.70%, 24.00% 74.70%, 26.00% 74.70%, 28.00% 74.70%, 30.00% 74.70%, 32.00% 74.70%, 34.00% 74.70%, 36.00% 74.70%, 38.00% 74.70%, 40.00% 74.70%, 42.00% 74.70%, 44.00% 74.70%, 46.00% 74.70%, 48.00% 74.70%, 50.00% 74.70%, 52.00% 74.70%, 54.00% 74.70%, 56.00% 74.70%, 58.00% 74.70%, 60.00% 74.70%, 62.00% 74.70%, 64.00% 74.70%, 66.00% 74.70%, 68.00% 74.70%, 70.00% 74.70%, 72.00% 74.70%, 74.00% 74.70%, 76.00% 74.70%, 78.00% 74.70%, 80.00% 74.70%, 82.00% 74.70%, 84.00% 74.70%, 86.00% 74.70%, 88.00% 74.70%, 90.00% 74.70%, 92.00% 74.70%, 94.00% 74.70%, 96.00% 74.70%, 98.00% 74.70%, 100.00% 74.70%);
+}
+
+.__building {
+    position: absolute;
+    width: 100%;
+    bottom: 3%;
+    z-index: -14;
+}
+
+.__snowman {
+    position: absolute;
+    right: 0;
+    bottom: 0;
+    z-index: -12;
+}
+
+.container {
+    position: relative;
+    width: 90%;
+    height: 100%;
+    margin: 0 auto;
+    display: flex;
+    justify-content: center;
+    align-items: center;
+}
+
+.container .candy-quote {
+    display: none;
+}
+
+.container .introduction {
+    position: absolute;
+    top: 5rem;
+}
+
+.container .introduction>.theme {
+    font-size: 40px;
+    font-weight: 500;
+    font-family: var(--merriweather-serif);
+}
+
+.container .introduction>.greeting {
+    display: flex;
+    align-items: center;
+    font-size: 20px;
+    font-weight: normal;
+    font-family: var(--pops-sans);
+}
+
+@keyframes doRotate {
+    to {
+        transform: rotate(370deg);
+    }
+}
+
+.login-card {
+    position: relative;
+    width: auto;
+    height: auto;
+    padding: 35px;
+    background-color: whitesmoke;
+    box-shadow: rgba(100, 100, 111, 0.2) 0px 7px 29px 0px;
+}
+
+.deco {
+    position: absolute;
+    top: -40px;
+    left: -40px;
+    width: 150px;
+}
+
+.login-card>.login-card-title {
+    font-size: 35px;
+    font-weight: 400;
+    font-family: var(--merriweather-serif);
+}
+
+.ics-button {
+    padding: 10px 20px 10px 20px;
+    font-weight: 500;
+    font-size: 14px;
+    background-color: rgb(94, 94, 94);
+    font-family: var(--pops-sans);
+    color: white;
+    border: 2px solid white;
+    border-radius: 12px;
+    transition: background .5s, color .5s ease-in-out;
+}
+
+.ics-button:hover {
+    cursor: pointer;
+    background-color: inherit;
+    color: black;
+    border: 2px solid rgb(94, 94, 94);
+}
+
+.login-card .login-card-body>form {
+    display: flex;
+    flex-direction: column;
+    font-size: 20px;
+    font-weight: 600;
+    font-family: var(--pops-sans);
+}
+
+.login-card-body form>.email-holder,
+.login-card-body form>.password-holder {
+    position: relative;
+    margin: 5px 0 5px 0;
+    font-size: 20px;
+    font-weight: 600;
+    background-color: white;
+    padding: 10px 20px 10px 20px;
+    border-radius: 12px;
+    font-family: var(--pops-sans);
+}
+
+form>* {
+    margin: 10px 0 10px 0;
+}
+
+form .email-holder .email-liner,
+form .password-holder .password-liner {
+    left: 20px;
+    bottom: 10px;
+    position: absolute;
+    width: 0%;
+    height: 2px;
+    background-color: rgb(94, 94, 94);
+    transition: 800ms ease;
+}
+
+form .email-holder input[type=email],
+form .password-holder input[type=password] {
+    position: relative;
+    font-weight: 100;
+    font-size: 14px;
+    border: inherit;
+}
+
+.email-holder input[type=email]:active,
+.password-holder input[type=password]:active,
+.email-holder input[type=email]:focus,
+.password-holder input[type=password]:focus,
+.email-holder input[type=email]:focus-within,
+.password-holder input[type=password]:focus-within {
+    outline: none;
+}
+
+
+
+@media screen and (min-width: 60em) {
+
+    .path {
+        clip-path: polygon(100% 100%, 0% 100%, 0.00% 74.70%, 2.00% 73.77%, 4.00% 73.01%, 6.00% 72.42%, 8.00% 72.02%, 10.00% 71.81%, 12.00% 71.80%, 14.00% 71.99%, 16.00% 72.37%, 18.00% 72.93%, 20.00% 73.68%, 22.00% 74.59%, 24.00% 75.65%, 26.00% 76.85%, 28.00% 78.16%, 30.00% 79.57%, 32.00% 81.05%, 34.00% 82.59%, 36.00% 84.15%, 38.00% 85.71%, 40.00% 87.24%, 42.00% 88.73%, 44.00% 90.15%, 46.00% 91.48%, 48.00% 92.69%, 50.00% 93.77%, 52.00% 94.70%, 54.00% 95.46%, 56.00% 96.04%, 58.00% 96.44%, 60.00% 96.65%, 62.00% 96.66%, 64.00% 96.48%, 66.00% 96.10%, 68.00% 95.53%, 70.00% 94.79%, 72.00% 93.88%, 74.00% 92.82%, 76.00% 91.62%, 78.00% 90.31%, 80.00% 88.90%, 82.00% 87.41%, 84.00% 85.88%, 86.00% 84.32%, 88.00% 82.76%, 90.00% 81.22%, 92.00% 79.73%, 94.00% 78.31%, 96.00% 76.99%, 98.00% 75.77%, 100.00% 74.70%);
+    }
+
+    .container {
+        justify-content: start;
+    }
+
+    .container .introduction>.theme {
+        font-size: 70px;
+    }
+
+    .container .introduction>.greeting {
+        font-size: 30px;
+    }
+
+    .container .candy-stick {
+        transform: rotate(330deg);
+    }
+
+    .container .candy-quote {
+        position: absolute;
+        right: 0;
+        opacity: 1;
+        top: 5rem;
+        display: flex;
+    }
+
+
+    .container .candy-quote>.quote-container {
+        max-width: 40ch;
+        font-size: 13px;
+        font-family: var(--pops-sans);
+        padding: 20px;
+        background: white;
+        border-radius: 12px;
+    }
+}
+
+.snowflake {
+    color: #fff;
+    font-size: 1em;
+    font-family: Arial;
+    text-shadow: 0 0 1px #000;
+}
+
+@-webkit-keyframes snowflakes-fall {
+    0% {
+        top: -10%
+    }
+
+    100% {
+        top: 100%
+    }
+}
+
+@-webkit-keyframes snowflakes-shake {
+    0% {
+        -webkit-transform: translateX(0px);
+        transform: translateX(0px)
+    }
+
+    50% {
+        -webkit-transform: translateX(80px);
+        transform: translateX(80px)
+    }
+
+    100% {
+        -webkit-transform: translateX(0px);
+        transform: translateX(0px)
+    }
+}
+
+@keyframes snowflakes-fall {
+    0% {
+        top: -10%
+    }
+
+    100% {
+        top: 100%
+    }
+}
+
+@keyframes snowflakes-shake {
+    0% {
+        transform: translateX(0px)
+    }
+
+    50% {
+        transform: translateX(80px)
+    }
+
+    100% {
+        transform: translateX(0px)
+    }
+}
+
+.snowflake {
+    position: absolute;
+    top: -10%;
+    z-index: 9999;
+    -webkit-user-select: none;
+    -moz-user-select: none;
+    -ms-user-select: none;
+    user-select: none;
+    cursor: default;
+    -webkit-animation-name: snowflakes-fall, snowflakes-shake;
+    -webkit-animation-duration: 10s, 3s;
+    -webkit-animation-timing-function: linear, ease-in-out;
+    -webkit-animation-iteration-count: infinite, infinite;
+    -webkit-animation-play-state: running, running;
+    animation-name: snowflakes-fall, snowflakes-shake;
+    animation-duration: 10s, 3s;
+    animation-timing-function: linear, ease-in-out;
+    animation-iteration-count: infinite, infinite;
+    animation-play-state: running, running
+}
+
+.snowflake:nth-of-type(0) {
+    left: 1%;
+    -webkit-animation-delay: 0s, 0s;
+    animation-delay: 0s, 0s
+}
+
+.snowflake:nth-of-type(1) {
+    left: 10%;
+    -webkit-animation-delay: 1s, 1s;
+    animation-delay: 1s, 1s
+}
+
+.snowflake:nth-of-type(2) {
+    left: 20%;
+    -webkit-animation-delay: 6s, .5s;
+    animation-delay: 6s, .5s
+}
+
+.snowflake:nth-of-type(3) {
+    left: 30%;
+    -webkit-animation-delay: 4s, 2s;
+    animation-delay: 4s, 2s
+}
+
+.snowflake:nth-of-type(4) {
+    left: 40%;
+    -webkit-animation-delay: 2s, 2s;
+    animation-delay: 2s, 2s
+}
+
+.snowflake:nth-of-type(5) {
+    left: 50%;
+    -webkit-animation-delay: 8s, 3s;
+    animation-delay: 8s, 3s
+}
+
+.snowflake:nth-of-type(6) {
+    left: 60%;
+    -webkit-animation-delay: 6s, 2s;
+    animation-delay: 6s, 2s
+}
+
+.snowflake:nth-of-type(7) {
+    left: 70%;
+    -webkit-animation-delay: 2.5s, 1s;
+    animation-delay: 2.5s, 1s
+}
+
+.snowflake:nth-of-type(8) {
+    left: 80%;
+    -webkit-animation-delay: 1s, 0s;
+    animation-delay: 1s, 0s
+}
+
+.snowflake:nth-of-type(9) {
+    left: 90%;
+    -webkit-animation-delay: 3s, 1.5s;
+    animation-delay: 3s, 1.5s
+}

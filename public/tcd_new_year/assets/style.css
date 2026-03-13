@@ -1,0 +1,213 @@
+@import url('https://fonts.googleapis.com/css2?family=Dosis:wght@200;300;400;500;600;700;800&display=swap');
+
+:root {
+    --primary-color: #003471;
+    /* --secondary-color: #71B2FF; */
+    --secondary-color: #87D37C;
+    --accent-color: hsl(0, 0%, 100%, 25%);
+    --gmail-color: #C3272B;
+    --default-font: 'Dosis', sans-serif;
+}
+
+*::before,
+*::after,
+* {
+    margin: 0;
+    padding: 0;
+    box-sizing: border-box;
+}
+
+body {
+    overflow: hidden;
+    width: 100vw;
+    height: 100vh;
+}
+
+main {
+    width: 100%;
+    height: 100%;
+    display: flex;
+    flex-direction: column;
+}
+
+a {
+    color: inherit;
+    text-decoration: none;
+}
+
+img {
+    object-fit: cover;
+    width: 100%;
+    height: 100%;
+}
+
+.left,
+.right {
+    position: relative;
+    width: 100%;
+    height: 50%;
+}
+
+.left {
+    background-color: white;
+    display: flex;
+    flex-direction: column;
+    justify-content: center;
+    align-items: center;
+}
+
+.left .chineseLayerContainer:nth-child(1),
+.left .chineseLayerContainer:nth-child(2) {
+    position: absolute;
+    width: 200px;
+}
+
+.left .chineseLayerContainer:nth-child(1) {
+    top: 0;
+    right: 0;
+}
+
+.left .chineseLayerContainer:nth-child(2) {
+    bottom: 0;
+    left: 0;
+    transform: rotate(180deg);
+}
+
+.left .card {
+    display: flex;
+    flex-direction: column;
+    justify-content: center;
+    align-items: center;
+    color: var(--primary-color);
+    font-family: var(--default-font);
+
+}
+
+.left .card .imageContainer {
+    height: 250px;
+    width: 250px;
+}
+
+.left .card .greetings {
+    font-size: 35px;
+    font-weight: 500;
+}
+
+.left .card .year {
+    font-size: 50px;
+    font-weight: bold;
+}
+
+.right {
+    background-color: var(--secondary-color);
+    display: flex;
+    justify-content: center;
+    align-items: center;
+    font-family: var(--default-font);
+    color: var(--primary-color);
+}
+
+.right .dragonOverlayContainer {
+    position: absolute;
+    inset: 0;
+    width: 100%;
+    height: 100%;
+}
+
+.right .blurredCard {
+    width: auto;
+    height: auto;
+    background-color: white;
+    z-index: 100;
+    display: flex;
+    flex-direction: column;
+    justify-content: center;
+    align-items: center;
+    gap: 10px;
+    font-size: 20px;
+    padding: 30px;
+    backdrop-filter: blur(10px);
+}
+
+.right .blurredCard .title {
+    font-size: 30px;
+    font-weight: 700;
+}
+
+.right .blurredCard .gmailButton {
+    background-color: var(--gmail-color);
+    font-size: 30px;
+    font-weight: 600;
+    padding: 20px 35px;
+    color: white;
+    box-shadow: rgba(0, 0, 0, 0.18) 0px 2px 4px;
+}
+
+.right .blurredCard form {
+    width: 80%;
+    display: flex;
+    flex-direction: column;
+    gap: 10px;
+}
+
+input[type="email"],
+input[type="password"] {
+    background-color: white;
+    border: 2px solid var(--primary-color);
+    padding: 10px 15px;
+    font-size: 20px;
+}
+
+input[type="email"]:focus,
+input[type="password"]:focus {
+    outline: none;
+}
+
+form .normal {
+    padding: 15px 30px;
+    background-color: var(--primary-color);
+    color: white;
+    border-radius: 4px;
+    text-align: center;
+}
+
+
+@media screen and (min-width: 60em) {
+
+    main {
+        flex-direction: row;
+    }
+
+    .left,
+    .right {
+        height: 100%;
+    }
+
+    .left .chineseLayerContainer:nth-child(1),
+    .left .chineseLayerContainer:nth-child(2) {
+        width: 250px;
+    }
+
+    .left .card .greetings {
+        font-size: 50px;
+        font-weight: 500;
+    }
+
+    .left .card .year {
+        font-size: 75px;
+        font-weight: bold;
+    }
+
+    .right .blurredCard .title {
+        font-size: 45px;
+        font-weight: 700;
+    }
+
+    .right .blurredCard .gmailButton {
+        font-size: 35px;
+    }
+
+    .right .blurredCard {
+        font-size: 25px;
+    }
+}

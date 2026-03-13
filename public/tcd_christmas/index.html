@@ -1,0 +1,160 @@
+<!DOCTYPE html>
+<html lang="en">
+   <head>
+      <meta charset="UTF-8" />
+      <meta http-equiv="X-UA-Compatible" content="IE=edge" />
+      <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+      <title>TCD | Login-page</title>
+      <link rel="stylesheet" href="./assets/style.css" />
+   </head>
+   <body>
+      <section>
+         <!-- <img
+            src="./assets/images/candy_overlay.png"
+            alt="candy-overlay"
+            class="candy-overlay"
+         /> -->
+         <div class="overlay"></div>
+         <div class="snowflakes" aria-hidden="true">
+            <div class="snowflake">
+               ❅
+            </div>
+            <div class="snowflake">
+               ❅
+            </div>
+            <div class="snowflake">
+               ❆
+            </div>
+            <div class="snowflake">
+               ❄
+            </div>
+            <div class="snowflake">
+               ❅
+            </div>
+            <div class="snowflake">
+               ❆
+            </div>
+            <div class="snowflake">
+               ❄
+            </div>
+            <div class="snowflake">
+               ❅
+            </div>
+            <div class="snowflake">
+               ❆
+            </div>
+            <div class="snowflake">
+               ❄
+            </div>
+         </div>
+         <div class="path"></div>
+         <img
+            src="./assets/images/building.png"
+            alt="building"
+            class="__building"
+         />
+         <img
+            src="./assets/images/snowman.svg"
+            alt="snowman"
+            class="__snowman"
+         />
+         <div class="container">
+            <div class="candy-quote">
+               <!-- <img
+                  src="./assets/images/candy-stick.png"
+                  alt="candy-stick"
+                  class="candy-stick"
+                  width="100"
+               /> -->
+               <p class="quote-container">
+                  "Wishing all the hardworking and dedicated workers a joyous
+                  Christmas filled with the warmth of gratitude, the spirit of
+                  camaraderie, and the well-deserved rest that comes with the
+                  season. Your efforts make the holidays brighter for everyone.
+                  Cheers to a festive season of appreciation and joy!"
+               </p>
+            </div>
+            <div class="introduction">
+               <div class="theme">Merry Christmas</div>
+               <div class="greeting">
+                  <img
+                     src="./assets/images/ics.png"
+                     alt=""
+                     width="50"
+                     style="border-radius: 5px;"
+                  />&nbsp; Integrated Computer Systems
+               </div>
+            </div>
+            <div class="login-card">
+               <img src="./assets/images/deco.png" alt="deco" class="deco" />
+               <div class="login-card-title">TCD</div>
+               <div class="login-card-body">
+                  <form action="#" method="post">
+                     <button class="ics-button">
+                        Sign in using ICS Gmail&nbsp;<i
+                           class="fa-solid fa-arrow-right"
+                        ></i>
+                     </button>
+                     <!-- <label for="email">Email</label>
+                     <div class="email-holder" id="email-holder">
+                        <input
+                           type="email"
+                           class="email"
+                           name="email"
+                           id="email"
+                        />
+                        <i class="fa-solid fa-envelope"></i>
+                        <div class="email-liner" id="email-liner"></div>
+                     </div>
+                     <label for="password">Password</label>
+                     <div class="password-holder" id="password-holder">
+                        <input
+                           type="password"
+                           class="password"
+                           name="password"
+                           id="password"
+                        />
+                        <i class="fa-solid fa-lock"></i>
+                        <div class="password-liner" id="password-liner"></div>
+                     </div>
+                     <div>
+                        <div class="form-check">
+                           <label class="form-check-label">
+                              <input
+                                 type="checkbox"
+                                 class="form-check-input"
+                                 name=""
+                                 id=""
+                                 value="checkedValue"
+                                 checked
+                              />
+                              Remember me
+                           </label>
+                        </div>
+                     </div>
+                     <button class="ics-button">Sign-in</button> -->
+                  </form>
+               </div>
+            </div>
+         </div>
+      </section>
+
+      <script>
+         const email_holder = document.getElementById("email-holder");
+         const email_liner = document.getElementById("email-liner");
+         const password_holder = document.getElementById("password-holder");
+         const password_liner = document.getElementById("password-liner");
+
+         email_holder.addEventListener("click", function () {
+            email_liner.style.width = "70%";
+         });
+         password_holder.addEventListener("click", function () {
+            password_liner.style.width = "70%";
+         });
+      </script>
+      <script
+         src="https://kit.fontawesome.com/d1cc49e838.js"
+         crossorigin="anonymous"
+      ></script>
+   </body>
+</html>
