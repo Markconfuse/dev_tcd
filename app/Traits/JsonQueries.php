@@ -496,7 +496,9 @@ trait JsonQueries
         $lastTickets = $this->getEngineerLastTickets(); // Last ticket_id only
         $ticketStatuses = $this->getEngineerLastTicketStatuses(); // Ticket status logic
 
-        $merged = $engineers->map(function ($eng) use ($ticketCounts, $lastTickets, $ticketStatuses) {
+        $statusFilter = $request->status_filter;
+
+        $merged = $engineers->map(function ($eng) use ($ticketCounts, $lastTickets, $ticketStatuses, $statusFilter) {
             $count = $ticketCounts->firstWhere('owner_id', $eng->account_id);
             $last = $lastTickets->firstWhere('owner_id', $eng->account_id);
             $status = null;
@@ -512,6 +514,10 @@ trait JsonQueries
                 $last_updated = $last->last_updated ?? null; // <-- new field
             }
 
+            if ($statusFilter && $status !== $statusFilter) {
+                return null;
+            }
+
             $eng->ticket_count = $count->ticket_count ?? 0;
             $eng->last_ticket_number = $last->ticket_id ?? null;
             $eng->last_ticket_subject = $subject ?? '—';
@@ -522,6 +528,7 @@ trait JsonQueries
             return $eng;
         });
 
+        $merged = $merged->filter()->values();
 
         $merged = $merged->sortByDesc('ticket_count')->values();
         $totalTickets = $merged->sum('ticket_count');

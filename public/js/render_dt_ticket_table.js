@@ -1,6 +1,6 @@
 
 
-function renderDtable(url, tbl_name) {
+function renderDtable(url, tbl_name, extraData = null) {
     $('#' + tbl_name).dataTable().fnClearTable();
     $('#' + tbl_name).dataTable().fnDestroy();
 
@@ -10,9 +10,19 @@ function renderDtable(url, tbl_name) {
         return $('#' + tbl_name).DataTable({
             processing: true,
             serverSide: true,
-            ajax: url,
+            ajax: {
+                url: url,
+                data: function(d) {
+                    if (typeof extraData === 'function') {
+                        $.extend(d, extraData());
+                    }
+                }
+            },
             deferRender: true,
             autoWidth: false,
+            dom: '<"row"<"col-sm-12 col-md-6"l><"col-sm-12 col-md-6" <"toolbar"> f>>' +
+                 '<"row"<"col-sm-12"tr>>' +
+                 '<"row"<"col-sm-12 col-md-5"i><"col-sm-12 col-md-7"p>>',
             responsive: {
                 details: {
                     display: $.fn.dataTable.Responsive.display.modal({

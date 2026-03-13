@@ -81,6 +81,7 @@
     <script src="https://cdn.datatables.net/plug-ins/1.10.19/sorting/datetime-moment.js"></script>
     <script src="{{ asset('adminlte/cdnjs-local/datetime-moment.js') }}"></script>
     <script src="{{ asset('/js/render_dt_ticket_table.js') }}"></script>
+    <script src="{{ asset('/js/data_table_filter.js') }}"></script>
     <script>
         $(function() {
 
@@ -91,9 +92,23 @@
             setTimeout(function() {
                 const url = '{{ route('getTicket') }}?sid=' + '{{ $_details['_statusID'] }}';
                 const table_name = 'tickets'
-                const loader = document.querySelector('.preloader-round');
-                const container = document.getElementById('engineerList');
-                table = renderDtable(url, table_name);
+                
+                table = renderDtable(url, table_name, function() {
+                    return {
+                        status_filter: $('#status_filter').val()
+                    };
+                });
+
+                new data_table_filter(table, {
+                    options: [
+                        { value: 'Not yet viewed', label: 'Not yet viewed' },
+                        { value: 'Not yet answered', label: 'Not yet answered' },
+                        { value: 'Answered', label: 'Answered' },
+                        { value: 'Escalated', label: 'Escalated' },
+                        { value: 'Escalation Checked', label: 'Escalation Checked' },
+                        { value: 'Escalation Approved', label: 'Escalation Approved' }
+                    ]
+                });
             }, 500);
 
             $('#tickets').on('click', 'td.tdClick', function() {
