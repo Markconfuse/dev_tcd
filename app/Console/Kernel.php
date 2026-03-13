@@ -36,6 +36,9 @@ class Kernel extends ConsoleKernel
         //$schedule->command('mail:unread')->everyMinute();
         
         // $schedule->command('mail:unanswered')->everyMinute();
+
+        $schedule->command('mail:unanswered')->weekdays()->dailyAt('08:00');
+        $schedule->command('mail:unread')->weekdays()->dailyAt('08:00');
     }
 
 
