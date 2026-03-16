@@ -37,130 +37,189 @@ class unansweredTicketMail extends Command
 
     public function handle()
     {
-        try {
-            // $ticket_id = 36518;
-            $tickets = Ticket::joinAssign()
-                ->ticketStatusIsNot([4])
-                ->within(24)
-                ->ticketIsNotDeleted()
-                ->ticketAssignedIsNotDeleted()
-                ->ticketIsRead()
-                ->ticketIsUnanswered()
-                // ->ticketID($ticket_id)
-                // ->first();
-                ->take(10)
-                ->get();
+        $allTickets = Ticket::joinAssign()
+            ->leftJoin('vw_crm_accounts as assign_acc', 'assign.owner_id', '=', 'assign_acc.AccountID')
+            ->ticketStatusIsNot([4])
+            // add condiition for only 24 hours old tickets
+            ->ticketIsNotDeleted()
+            ->ticketAssignedIsNotDeleted()
+            ->ticketIsRead()
+            ->ticketIsUnanswered()
+            ->select([
+                'ticket.*',
+                'ticket.date_created as created_at',
+                'assign_acc.AccountName as assigned_to',
+                'assign.owner_id as assigned_to_id',
+                'assign_acc.Email as assigned_to_email',
+            ])
+            ->get();
 
-            foreach ($tickets as $ticket) {
-                $email_subject = $ticket->subject;
-                $email_content = 'This email is for testing, Please ignore. Thanks!';
-                $email_assignee = Assignment::getAssignedEmail($ticket->ticket_id);
-                $email_cc = CarbonCopy::getCCEmail($ticket->ticket_id);
-
-                $log_message = sprintf(
-                    "Ticket ID: %d | Subject: %s | Content: %s | Carbon Copy: %s | Assignee: %s",
-                    $ticket->ticket_id,
-                    $email_subject ?: 'No Subject',
-                    $email_content ?: 'No Content',
-                    $email_cc ?: 'No carbon copy email found',
-                    $email_assignee ?: 'No assignee email found'
-                );
-
-                // \Log::info($log_message);
-
-                // Normalize and transform recipients
-                $array_email_to  = $this->transformSendTo($email_assignee);
-                $array_email_cc  = $this->transformCC($email_cc);
-                $array_email_bcc = $this->transformBCC($email_cc);
-
-                $mailable = new UnansweredRequestNotif($email_subject, $email_content);
-
-                // Render Blade to HTML
-                $htmlContent = view($mailable->build()->view, [
-                    'content' => $mailable->_content
-                ])->render();
-
-                // Setup PHPMailer
-                $mail = new PHPMailer(true);
-                $mail->isSMTP();
-                $mail->Host       = 'smtp-relay.gmail.com';
-                $mail->SMTPAuth   = false;
-                $mail->SMTPSecure = null;
-                $mail->Port       = 587;
-
-                // Sender
-                $mail->setFrom('noreply-tcdportal-support@ics.com.ph', 'NoReply:TCDPORTALSupport');
-
-                // --- ✅ Add Recipients (Safe Handling)
-                // To
-                if (is_array($array_email_to)) {
-                    foreach ($array_email_to as $email) {
-                        if (!empty($email)) {
-                            $mail->addAddress(trim($email));
-                        }
-                    }
-                } elseif (!empty($array_email_to)) {
-                    $mail->addAddress(trim($array_email_to));
-                }
-
-                // CC
-                if (is_array($array_email_cc)) {
-                    foreach ($array_email_cc as $cc) {
-                        if (!empty($cc)) {
-                            $mail->addCC(trim($cc));
-                        }
-                    }
-                } elseif (!empty($array_email_cc)) {
-                    $mail->addCC(trim($array_email_cc));
-                }
-
-                // BCC
-                if (is_array($array_email_bcc)) {
-                    foreach ($array_email_bcc as $bcc) {
-                        if (!empty($bcc)) {
-                            $mail->addBCC(trim($bcc));
-                        }
-                    }
-                } elseif (!empty($array_email_bcc)) {
-                    $mail->addBCC(trim($array_email_bcc));
-                }
-
-                $mail->addBCC('randres@ics.com.ph');
-
-                $mail->isHTML(true);
-                $mail->Subject = $mailable->_subject;
-                $mail->Body    = $htmlContent;
-                $mail->AltBody = strip_tags($htmlContent);
-
-                $mail->send();
-
-                \Log::info("✅ Mail sent successfully for Ticket ID: {$ticket->ticket_id}");
-            }
-        } catch (Exception $e) {
-            \Log::error('❌ Mail error: ' . $e->getMessage());
-            return '❌ Mail failed: ' . $e->getMessage();
+        if ($allTickets->isEmpty()) {
+            $this->info('No unanswered tickets found.');
+            return;
         }
+
+        $groupedByEmployee = $allTickets->groupBy('assigned_to_id');
+
+        foreach ($groupedByEmployee as $assigneeId => $tickets) {
+            if ($tickets->count() > 1) {
+                $this->sendEmailTableForUser($tickets);
+            } else {
+                $this->sendEmailSingle($tickets->first());
+            }
+        }
+    }
+
+    private function sendEmailSingle($ticket)
+    {
+        try {
+            $email_subject = $ticket->subject;
+            $email_content = 'You have 1 unanswered ticket requiring attention.';
+            $email_assignee = $ticket->assigned_to_email;
+            $email_cc = CarbonCopy::getCCEmail($ticket->ticket_id);
+
+            if (empty($email_assignee)) {
+                \Log::warning("No assignee email found for ticket ID: {$ticket->ticket_id}");
+                return;
+            }
+
+            $mail = $this->setupPHPMailer();
+            $mail->addAddress(trim($email_assignee));
+
+            foreach ($this->transformCC($email_cc) as $cc) {
+                $mail->addCC($cc);
+            }
+            
+            $htmlContent = view('mail.unanswered_tickets', [
+                'ticket' => $ticket
+            ])->render();
+
+            $mail->Subject = 'Action Required: ' . $email_subject;
+            $mail->Body    = $htmlContent;
+            $mail->AltBody = strip_tags($htmlContent);
+
+            \Log::info('Sending unanswered ticket mail', [
+                'ticket_id' => $ticket->ticket_id,
+                'to' => [$email_assignee],
+                'cc' => $this->transformCC($email_cc),
+                'bcc' => $this->transformBCC(),
+            ]);
+
+            sleep(10);
+            $mail->send();
+
+            \Log::info("✅ Single mail sent to: {$email_assignee}");
+        } catch (Exception $e) {
+            \Log::error('❌ Single Mail error: ' . $e->getMessage());
+        }
+    }
+
+    private function sendEmailTableForUser($tickets)
+    {
+        try {
+            $firstTicket = $tickets->first();
+            $email_assignee = $firstTicket->assigned_to_email;
+
+            if (empty($email_assignee)) {
+                \Log::warning('No assignee email found for summary email.', [
+                    'assignee_id' => $firstTicket->assigned_to_id ?? null,
+                ]);
+                return;
+            }
+
+            $mail = $this->setupPHPMailer();
+            $mail->addAddress(trim($email_assignee));
+
+            $allCCs = $this->collectCcEmails($tickets);
+            foreach ($this->transformCC($allCCs) as $cc) {
+                $mail->addCC($cc);
+            }
+
+            $htmlContent = view('mail.unanswered_tickets_table', [
+                'tickets' => $tickets,
+                'assigned_to' => $firstTicket->assigned_to,
+            ])->render();
+
+            $mail->Subject = 'Summary: ' . $tickets->count() . ' Unanswered Tickets - ' . date('Y-m-d');
+            $mail->Body    = $htmlContent;
+            $mail->AltBody = strip_tags($htmlContent);
+
+            \Log::info('Sending unanswered tickets summary', [
+                'assignee_id' => $firstTicket->assigned_to_id ?? null,
+                'ticket_count' => $tickets->count(),
+                'to' => [$email_assignee],
+                'cc' => $this->transformCC($allCCs),
+                'bcc' => $this->transformBCC(),
+            ]);
+
+            sleep(10);
+            $mail->send();
+
+            \Log::info("✅ Table mail sent to: {$email_assignee} (Count: {$tickets->count()})");
+
+        } catch (Exception $e) {
+            \Log::error('❌ Table Mail error: ' . $e->getMessage());
+        }
+    }
+
+    private function setupPHPMailer()
+    {
+        $mail = new PHPMailer(true);
+        $mail->isSMTP();
+        $mail->Host       = config('mail.host');
+        $mail->SMTPAuth   = true;
+        $mail->Username   = config('mail.username');
+        $mail->Password   = config('mail.password');
+        $mail->SMTPSecure = config('mail.encryption');
+        $mail->Port       = config('mail.port');
+        $mail->isHTML(true);
+        $mail->setFrom('noreply-tcdportal-support@ics.com.ph', 'NoReply:TCDPORTALSupport');
+
+        foreach ($this->transformBCC() as $bcc) {
+            $mail->addBCC($bcc);
+        }
+
+        return $mail;
     }
 
 
     private function transformSendTo($email_assignee)
     {
-        $lower_case_to = str_replace(',', ' ', $email_assignee);
-        $array_string_to = explode(',', $lower_case_to);
-        return explode(' ', $array_string_to[0]);
+        return $this->normalizeEmails($email_assignee);
     }
 
     private function transformCC($email_cc)
     {
-        $lower_case_cc = str_replace(',', ' ', strtolower($email_cc));
-        $array_string_cc = explode(',', $lower_case_cc);
-        return explode(' ', $array_string_cc[0]);
+        return $this->normalizeEmails($email_cc);
     }
 
     private function transformBCC()
     {
-        $lower_case_bcc = str_replace(',', ' ', 'dramos@ics.com.ph,mescario@ics.com.ph,randres@ics.com.ph');
-        $array_string_bcc = explode(',', $lower_case_bcc);
-        return explode(' ', $array_string_bcc[0]);
+        return $this->normalizeEmails('dramos@ics.com.ph,mescario@ics.com.ph,randres@ics.com.ph');
+    }
+
+    private function collectCcEmails($tickets)
+    {
+        $cc_emails = [];
+
+        foreach ($tickets as $ticket) {
+            $cc_emails[] = CarbonCopy::getCCEmail($ticket->ticket_id);
+        }
+
+        return implode(',', array_filter($cc_emails));
+    }
+
+    private function normalizeEmails($emails)
+    {
+        if (empty($emails)) {
+            return [];
+        }
+
+        $normalized = preg_replace('/[\s;]+/', ',', strtolower($emails));
+        $candidates = array_filter(array_map('trim', explode(',', $normalized)));
+
+        return array_values(array_filter($candidates, function ($email) {
+            return filter_var($email, FILTER_VALIDATE_EMAIL);
+        }));
     }
 }

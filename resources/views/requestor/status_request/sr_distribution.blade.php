@@ -94,13 +94,17 @@
                 const table_name = 'tickets'
                 
                 table = renderDtable(url, table_name, function() {
+                    const statusFilter = $('#status_filter').val();
+
                     return {
-                        status_filter: $('#status_filter').val()
+                        status_filter: statusFilter === 'All' ? '' : statusFilter
                     };
                 });
 
                 new data_table_filter(table, {
+                    defaultValue: 'All',
                     options: [
+                        { value: 'All', label: 'All' },
                         { value: 'Not yet viewed', label: 'Not yet viewed' },
                         { value: 'Not yet answered', label: 'Not yet answered' },
                         { value: 'Answered', label: 'Answered' },

@@ -97,7 +97,7 @@ class Ticket extends Model
     {
         return $query->join('ticket_assignment as assign', 'assign.ticket_id', '=', 'ticket.ticket_id');
     }
-	
+
 	public function scopeTicketStatusIsNot($query, array $status)
     {
         return $query->whereNotIn('ticket.status_id', $status);
