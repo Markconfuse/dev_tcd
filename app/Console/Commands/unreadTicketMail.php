@@ -100,7 +100,6 @@ class unreadTicketMail extends Command
                 'bcc' => $this->transformBCC(),
             ]);
 
-            sleep(10);
             $mail->send();
 
             \Log::info("✅ Unread single mail sent to: {$email_assignee}");
@@ -147,7 +146,6 @@ class unreadTicketMail extends Command
                 'bcc' => $this->transformBCC(),
             ]);
 
-            sleep(10);
             $mail->send();
 
             \Log::info("✅ Unread table mail sent to: {$email_assignee} (Count: {$tickets->count()})");

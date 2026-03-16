@@ -105,7 +105,6 @@ class unansweredTicketMail extends Command
                 'bcc' => $this->transformBCC(),
             ]);
 
-            sleep(10);
             $mail->send();
 
             \Log::info("✅ Single mail sent to: {$email_assignee}");
@@ -152,7 +151,6 @@ class unansweredTicketMail extends Command
                 'bcc' => $this->transformBCC(),
             ]);
 
-            sleep(10);
             $mail->send();
 
             \Log::info("✅ Table mail sent to: {$email_assignee} (Count: {$tickets->count()})");
