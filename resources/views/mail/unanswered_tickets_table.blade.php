@@ -11,9 +11,10 @@
         <table style="width: 100%; border-collapse: collapse; margin-top: 20px;">
             <thead>
                 <tr>
-                    <th style="border-bottom: 2px solid #ebedef; text-align: left; padding: 10px; font-size: 14px;">Ticket ID</th>
+                    <th style="border-bottom: 2px solid #ebedef; text-align: left; padding: 10px; font-size: 14px; white-space: nowrap;">Ticket ID</th>
                     <th style="border-bottom: 2px solid #ebedef; text-align: left; padding: 10px; font-size: 14px;">Subject</th>
                     <th style="border-bottom: 2px solid #ebedef; text-align: left; padding: 10px; font-size: 14px;">Created</th>
+                    <th style="border-bottom: 2px solid #ebedef; text-align: left; padding: 10px; font-size: 14px;"></th>
                 </tr>
             </thead>
             <tbody>
@@ -22,6 +23,11 @@
                         <td style="border-bottom: 1px solid #ebedef; padding: 10px; font-size: 13px;">{{ $ticket->ticket_id }}</td>
                         <td style="border-bottom: 1px solid #ebedef; padding: 10px; font-size: 13px;">{{ $ticket->subject }}</td>
                         <td style="border-bottom: 1px solid #ebedef; padding: 10px; font-size: 13px;">{{ $ticket->created_at }}</td>
+                        <td style="border-bottom: 1px solid #ebedef; padding: 10px; font-size: 13px; text-align: center;">
+                            <a href="{{ url('/view-request/' . base64_encode($ticket->ticket_id)) }}" style="text-decoration: none;" aria-label="Open ticket">
+                                <img src="{{ url('https://img.icons8.com/windows/32/external-link.png') }}" alt="Open" style="width: 18px; height: 18px; vertical-align: middle;">
+                            </a>
+                        </td>
                     </tr>
                 @endforeach
             </tbody>
