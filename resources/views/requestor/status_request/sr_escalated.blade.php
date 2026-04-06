@@ -87,6 +87,7 @@
 <!-- <script src="{{ asset('public/adminlte/cdnjs-local/datetime-moment.js') }}"></script> -->
 <!-- <script src="{{ asset('public/js/render_ticket_table.js') }}"></script> -->
 <script src="{{ asset('public/js/render_escalated_ticket_table.js') }}"></script>
+<script src="{{ asset('js/data_table_filter.js') }}"></script>
 <script type="text/javascript">
     $(function () {
 
@@ -99,7 +100,17 @@
         console.log('{{ route('getTicket') }}?sid='+'{{ $_details['_statusID'] }}');
 
         table = renderEDtable('{{ route('getTicket') }}?sid='+'{{ $_details['_statusID'] }}', 'eTickets');
-          
+
+        new data_table_filter(table, {
+            column: 12,
+            options: [
+                { value: '', label: 'All Status' },
+                { value: 'Unassigned', label: 'Unassigned' },
+                { value: 'Assigned', label: 'Assigned' },
+                { value: 'Answered', label: 'Answered' },
+                { value: 'Closed', label: 'Closed' }
+            ]
+        });
     }, 500)
 
     $('#eTickets').on('click', 'td.tdClick', function() {

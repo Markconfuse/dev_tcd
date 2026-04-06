@@ -91,6 +91,7 @@
 <script src="https://cdn.datatables.net/plug-ins/1.10.19/sorting/datetime-moment.js"></script>
 <!-- <script src="{{ asset('public/adminlte/cdnjs-local/datetime-moment.js') }}"></script> -->
 <script src="{{ asset('js/render_ticket_table.js') }}"></script>
+<script src="{{ asset('js/data_table_filter.js') }}"></script>
 <script type="text/javascript">
   $(function () {
 
@@ -103,7 +104,17 @@
       // console.log('{{ route('getTicket') }}?sid='+'{{ $_details['_statusID'] }}');
 
           table = renderDtable('{{ route('getTicket') }}?sid='+'{{ $_details['_statusID'] }}', 'tickets');
-          
+
+          new data_table_filter(table, {
+              column: 12,
+              options: [
+                  { value: '', label: 'All Status' },
+                  { value: 'Unassigned', label: 'Unassigned' },
+                  { value: 'Assigned', label: 'Assigned' },
+                  { value: 'Answered', label: 'Answered' },
+                  { value: 'Closed', label: 'Closed' }
+              ]
+          });
     }, 500)
 
     $('#tickets').on('click', 'td.tdClick', function() {

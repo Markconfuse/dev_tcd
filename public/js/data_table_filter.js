@@ -1,12 +1,13 @@
 (function($) {
     $.fn.dataTableFilter = function(table, options) {
         var settings = $.extend({
-            container: '.toolbar',
+            container: '.dataTables_filter',
             id: 'status_filter',
             label: 'Filter',
             defaultValue: '',
             options: [],
-            margin: '10px'
+            margin: '0 10px',
+            column: null
         }, options);
 
         var html = `
@@ -22,10 +23,15 @@
             </label>
         `;
 
-        $(settings.container).css('display', 'inline-block').css('float', 'right').append(html);
+        $(settings.container).prepend(html);
 
         $(document).off('change', `#${settings.id}`).on('change', `#${settings.id}`, function() {
-            table.draw();
+            var value = $(this).val();
+            if (settings.column !== null) {
+                table.column(settings.column).search(value).draw();
+            } else {
+                table.draw();
+            }
         });
 
         return this;
