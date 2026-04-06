@@ -21,9 +21,12 @@ class DashboardController extends Controller
         $this->middleware('auth');
     }
 
-    public function dashboard() 
+    public function dashboard(Request $request) 
     {
         $this->saveLogs('Viewed Dashboard');
+
+        $selectedYear = $request->get('year', date('Y'));
+        $filterByYear = ($selectedYear !== 'all');
 
         $_buGroup = Session('userData')->AccountGroup;
 
@@ -40,11 +43,17 @@ class DashboardController extends Controller
                                 ->AccountGroup()
                                 ->getCount();
 
-                $ticket_pending = Ticket::joinESAO()->statusID(1)->AccountGroup()->getCount();
+                $ticket_pending = Ticket::joinESAO()
+                                ->when($filterByYear, fn($q) => $q->whereRaw('YEAR(date_created) = ?', [$selectedYear]))
+                                ->statusID(1)->AccountGroup()->getCount();
 
-                $ticket_open = Ticket::joinESAO()->whereIn('status_id', ['1', '2', '3'])->AccountGroup()->getCount();
+                $ticket_open = Ticket::joinESAO()
+                                ->when($filterByYear, fn($q) => $q->whereRaw('YEAR(date_created) = ?', [$selectedYear]))
+                                ->whereIn('status_id', ['1', '2', '3'])->AccountGroup()->getCount();
 
-                $ticket_closed = Ticket::joinESAO()->statusID(4)->AccountGroup()->getCount();
+                $ticket_closed = Ticket::joinESAO()
+                                ->when($filterByYear, fn($q) => $q->whereRaw('YEAR(date_created) = ?', [$selectedYear]))
+                                ->statusID(4)->AccountGroup()->getCount();
 
                 $ticket_count_ao = DB::TABLE('vw_dash_ticket_count_ao')->whereIn('AccountGroup', explode(',', $_buGroup))->get();
             } else { //AO
@@ -53,11 +62,17 @@ class DashboardController extends Controller
                 $ticket_today = Ticket::tixAccOwner()
                                 ->whereRaw('DATEADD(dd, 0, DATEDIFF(dd, 0, date_created)) = DATEADD(dd, 0, DATEDIFF(dd, 0, GETDATE()))')->getCount();
 
-                $ticket_pending = Ticket::tixAccOwner()->statusID(1)->getCount();
+                $ticket_pending = Ticket::tixAccOwner()
+                                ->when($filterByYear, fn($q) => $q->whereRaw('YEAR(date_created) = ?', [$selectedYear]))
+                                ->statusID(1)->getCount();
 
-                $ticket_open = Ticket::whereIn('status_id', ['1', '2', '3'])->where('account_owner_id', Session('userData')->account_id)->getCount();
+                $ticket_open = Ticket::whereIn('status_id', ['1', '2', '3'])
+                                ->when($filterByYear, fn($q) => $q->whereRaw('YEAR(date_created) = ?', [$selectedYear]))
+                                ->where('account_owner_id', Session('userData')->account_id)->getCount();
 
-                $ticket_closed = Ticket::tixAccOwner()->statusID(4)->getCount();
+                $ticket_closed = Ticket::tixAccOwner()
+                                ->when($filterByYear, fn($q) => $q->whereRaw('YEAR(date_created) = ?', [$selectedYear]))
+                                ->statusID(4)->getCount();
 
                 $ticket_count_ao = DB::TABLE('vw_dash_ticket_count_ao')->whereIn('AccountGroup', explode(',', $_buGroup))->get();
             }
@@ -73,22 +88,32 @@ class DashboardController extends Controller
 
                 $ticket_today = Ticket::whereRaw('DATEADD(dd, 0, DATEDIFF(dd, 0, date_created)) = DATEADD(dd, 0, DATEDIFF(dd, 0, GETDATE()))')->getCount();
 
-                $ticket_pending = Ticket::joinAssign()->Assigned()->NotDeleted()->Unanswered()->getCount();
+                $ticket_pending = Ticket::joinAssign()
+                                ->when($filterByYear, fn($q) => $q->whereRaw('YEAR(date_created) = ?', [$selectedYear]))
+                                ->Assigned()->NotDeleted()->Unanswered()->getCount();
 
-                $ticket_open = Ticket::joinAssign()->Assigned()->NotDeleted()->Unanswered()->whereIn('status_id', ['1', '2', '5', '6'])->getCount();
+                $ticket_open = Ticket::joinAssign()
+                                ->when($filterByYear, fn($q) => $q->whereRaw('YEAR(date_created) = ?', [$selectedYear]))
+                                ->Assigned()->NotDeleted()->Unanswered()->whereIn('status_id', ['1', '2', '5', '6'])->getCount();
 
-                $ticket_closed = Ticket::joinAssign()->Assigned()->NotDeleted()->Unanswered()->statusID(4)->getCount();
+                $ticket_closed = Ticket::joinAssign()
+                                ->when($filterByYear, fn($q) => $q->whereRaw('YEAR(date_created) = ?', [$selectedYear]))
+                                ->Assigned()->NotDeleted()->Unanswered()->statusID(4)->getCount();
 
             } else {
                 $dash_label = 'All';
 
                 $ticket_today = Ticket::whereRaw('DATEADD(dd, 0, DATEDIFF(dd, 0, date_created)) = DATEADD(dd, 0, DATEDIFF(dd, 0, GETDATE()))')->getCount();
 
-                $ticket_pending = Ticket::statusID(1)->getCount();
+                $ticket_pending = Ticket::when($filterByYear, fn($q) => $q->whereRaw('YEAR(date_created) = ?', [$selectedYear]))
+                                ->statusID(1)->getCount();
 
-                $ticket_open = Ticket::whereIn('status_id', ['1', '2', '3'])->getCount();
+                $ticket_open = Ticket::whereIn('status_id', ['1', '2', '3'])
+                                ->when($filterByYear, fn($q) => $q->whereRaw('YEAR(date_created) = ?', [$selectedYear]))
+                                ->getCount();
 
-                $ticket_closed = Ticket::statusID(4)->getCount();
+                $ticket_closed = Ticket::when($filterByYear, fn($q) => $q->whereRaw('YEAR(date_created) = ?', [$selectedYear]))
+                                ->statusID(4)->getCount();
             }
 
             $now = new DateTime();
@@ -110,31 +135,40 @@ class DashboardController extends Controller
         
     }
 
-    public function getChartRequestType()
+    public function getChartRequestType(Request $request)
     {
+        $year = $request->get('year', date('Y'));
+        $filterByYear = ($year !== 'all');
 
         $_strQry = 'SELECT B.request_type_id, request_type, ISNULL(cnt, 0) as count_per_rtype FROM (';
         $_strQry .= ' SELECT count(*) as cnt, request_type_id FROM ticket A';
         if(Session('userData')->role_name == 'requestor') {
             $_strQry .= " INNER JOIN vw_crm_accounts B ON B.AccountID = A.account_owner_id";
             if(Session('userData')->AccountGroup == 'BU8' || Session('userData')->AccountGroup == 'BU12') {
-                $_strQry .= " WHERE AccountGroup IN('BU8', 'BU12')";
+                $_strQry .= $filterByYear
+                    ? " WHERE AccountGroup IN('BU8', 'BU12') AND YEAR(A.date_created) = $year"
+                    : " WHERE AccountGroup IN('BU8', 'BU12')";
             } else {
-                $_strQry .= " WHERE AccountGroup IN('";
-                $_strQry .= Session('userData')->AccountGroup;
-                $_strQry .= "')";
+                $_strQry .= " WHERE AccountGroup IN('" . Session('userData')->AccountGroup . "')";
+                if ($filterByYear) $_strQry .= " AND YEAR(A.date_created) = $year";
             }
-        } 
+        } else {
+            if ($filterByYear) $_strQry .= " WHERE YEAR(A.date_created) = $year";
+        }
         $_strQry .= ' GROUP BY request_type_id ) A right outer join lib_request_type B';
         $_strQry .= ' ON A.request_type_id = B.request_type_id';
 
         return response()->json(['data' => DB::SELECT($_strQry)]);
     }
 
-    public function getChartPerAO()
+    public function getChartPerAO(Request $request)
     {
+        $year = $request->get('year', date('Y'));
+        $filterByYear = ($year !== 'all');
+
         $_strQry = 'SELECT ISNULL(SUM(cnt), 0) as cnt, AccountName, AccountGroup FROM (';
         $_strQry .= ' SELECT count(*) as cnt, account_owner_id FROM ticket A';
+        if ($filterByYear) $_strQry .= " WHERE YEAR(A.date_created) = $year";
         $_strQry .= ' GROUP BY account_owner_id';
         $_strQry .= ' ) A RIGHT OUTER JOIN vw_crm_accounts B';
         $_strQry .= ' ON A.account_owner_id = B.AccountID';
@@ -154,12 +188,17 @@ class DashboardController extends Controller
         return response()->json(['data' => DB::SELECT($_strQry)]);
     }
 
-    public function getChartPerBU()
+    public function getChartPerBU(Request $request)
     {
+        $year = $request->get('year', date('Y'));
+        $filterByYear = ($year !== 'all');
+        $yearClause = $filterByYear ? "WHERE YEAR(A.date_created) = $year" : '';
+
         $chart_per_bu = DB::SELECT("SELECT SUM(cnt) as cnt, AccountGroup FROM (
                                     SELECT count(*) as cnt, requestor_id FROM ticket A 
                                     INNER JOIN vw_crm_accounts B
                                     ON A.requestor_id = B.AccountID
+                                    $yearClause
                                     GROUP BY requestor_id ) A INNER JOIN vw_crm_accounts B
                                     ON A.requestor_id = B.AccountID
                                     GROUP BY AccountGroup ORDER BY 1 desc");
