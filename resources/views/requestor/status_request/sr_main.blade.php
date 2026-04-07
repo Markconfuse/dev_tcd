@@ -1,8 +1,8 @@
 @extends('layouts.page')
 
-@section('title', $_details['_status'].' Request')
+@section('title', $_details['_status'] . ' Request')
 
-@section('content_header', $_details['_status'].' Request')
+@section('content_header', $_details['_status'] . ' Request')
 
 @section('css')
 
@@ -10,33 +10,37 @@
 
 <style type="text/css">
   .preloader {
-   position: absolute;
-   top: 0;
-   left: 0;
-   width: 100%;
-   height: 100%;
-   /*z-index: 9999;*/
-   background-image: url('https://digitalsynopsis.com/wp-content/uploads/2016/06/loading-animations-preloader-gifs-ui-ux-effects-11.gif');
-   background-repeat: no-repeat; 
-   background-color: #FFF;
-   background-position: center;
-}
+    position: absolute;
+    top: 0;
+    left: 0;
+    width: 100%;
+    height: 100%;
+    /*z-index: 9999;*/
+    background-image: url('https://digitalsynopsis.com/wp-content/uploads/2016/06/loading-animations-preloader-gifs-ui-ux-effects-11.gif');
+    background-repeat: no-repeat;
+    background-color: #FFF;
+    background-position: center;
+  }
 </style>
 @stop
 
 @section('content')
 
 <div class="row">
-    <div class="col-sm-4">
-    {{-- <h5 style="background-color: white;padding: 15px;font-style:italic;">Please (Hold SHIFT + F5) to get the latest version of the Portal</h5> --}}
-    {{-- <h5 style="background-color: white;padding: 15px;font-style:italic;">To get the latest version of the Portal (Hold SHIFT + F5)</h5> --}}
-    {{-- <h5 style="background-color: white;padding: 15px">The <b>Search</b> feature now includes searching for everything on the request, e.g. replies, request type, requestor, buyers, even combined (Cost Inquiry Cata 42 inch).</h5> --}}
+  <div class="col-sm-4">
+    {{-- <h5 style="background-color: white;padding: 15px;font-style:italic;">Please (Hold SHIFT + F5) to get the latest
+      version of the Portal</h5> --}}
+    {{-- <h5 style="background-color: white;padding: 15px;font-style:italic;">To get the latest version of the Portal
+      (Hold SHIFT + F5)</h5> --}}
+    {{-- <h5 style="background-color: white;padding: 15px">The <b>Search</b> feature now includes searching for
+      everything on the request, e.g. replies, request type, requestor, buyers, even combined (Cost Inquiry Cata 42
+      inch).</h5> --}}
 
-   <div class="form-group clearfix">
+    <div class="form-group clearfix">
       <div class="icheck-primary d-inline">
         <h5 style="background-color:white;padding:15px;font-size: 17px!important">
-        <input type="checkbox" name="on_new_tab" value="is_checked" checked>
-        <label>Open request in new tab</label>
+          <input type="checkbox" name="on_new_tab" value="is_checked" checked>
+          <label>Open request in new tab</label>
         </h5>
       </div>
     </div>
@@ -97,35 +101,37 @@
 
     $("input[name='on_new_tab']").iCheck({
       checkboxClass: 'icheckbox_flat',
-      increaseArea: '20%' 
+      increaseArea: '20%'
     });
 
-    setTimeout(function() {
+    setTimeout(function () {
       // console.log('{{ route('getTicket') }}?sid='+'{{ $_details['_statusID'] }}');
 
-          table = renderDtable('{{ route('getTicket') }}?sid='+'{{ $_details['_statusID'] }}', 'tickets');
+      table = renderDtable('{{ route('getTicket') }}?sid=' + '{{ $_details['_statusID'] }}', 'tickets');
 
-          new data_table_filter(table, {
-              column: 12,
-              options: [
-                  { value: '', label: 'All Status' },
-                  { value: 'Unassigned', label: 'Unassigned' },
-                  { value: 'Assigned', label: 'Assigned' },
-                  { value: 'Answered', label: 'Answered' },
-                  { value: 'Closed', label: 'Closed' }
-              ]
-          });
+      @if(in_array($_details['_status'], ['All', 'Cebu', 'Reassigned', 'Escalated']))
+        new data_table_filter(table, {
+          column: 12,
+          options: [
+            { value: '', label: 'All Status' },
+            { value: 'Unassigned', label: 'Unassigned' },
+            { value: 'Assigned', label: 'Assigned' },
+            { value: 'Answered', label: 'Answered' },
+            { value: 'Closed', label: 'Closed' }
+          ]
+        });
+      @endif
     }, 500)
 
-    $('#tickets').on('click', 'td.tdClick', function() {
+    $('#tickets').on('click', 'td.tdClick', function () {
 
-      if(table.row(this).data() !== undefined) {
+      if (table.row(this).data() !== undefined) {
         var url = '{{ route("view-request", ":slug") }}';
 
         url = url.replace(':slug', btoa(table.row(this).data()['ticket_id']));
 
         is_new_tab = $("input[name='on_new_tab']").iCheck('update')[0].checked
-        if(is_new_tab) {
+        if (is_new_tab) {
           window.open(url, '_blank');
         } else {
           $('.preloader-round').removeAttr('hidden', 'hidden');
@@ -138,4 +144,3 @@
 </script>
 
 @stop
-
