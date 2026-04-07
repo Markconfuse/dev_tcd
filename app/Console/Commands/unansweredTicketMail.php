@@ -6,6 +6,7 @@ use App\Assignment;
 use App\CarbonCopy;
 use App\Mail\MailTest;
 use App\Ticket;
+use Carbon\Carbon;
 use Illuminate\Console\Command;
 use Illuminate\Support\Facades\Mail;
 use DB;
@@ -43,6 +44,7 @@ class unansweredTicketMail extends Command
             // add condiition for only 24 hours old tickets
             ->ticketIsNotDeleted()
             ->ticketAssignedIsNotDeleted()
+            ->whereBetween('assign.date_assigned', [Carbon::now()->subHours(48), Carbon::now()])
             ->ticketIsRead()
             ->ticketIsUnanswered()
             ->select([
@@ -89,13 +91,13 @@ class unansweredTicketMail extends Command
             foreach ($this->transformCC($email_cc) as $cc) {
                 $mail->addCC($cc);
             }
-            
+
             $htmlContent = view('mail.unanswered_tickets', [
                 'ticket' => $ticket
             ])->render();
 
             $mail->Subject = 'Action Required: ' . $email_subject;
-            $mail->Body    = $htmlContent;
+            $mail->Body = $htmlContent;
             $mail->AltBody = strip_tags($htmlContent);
 
             \Log::info('Sending unanswered ticket mail', [
@@ -140,7 +142,7 @@ class unansweredTicketMail extends Command
             ])->render();
 
             $mail->Subject = 'Summary: ' . $tickets->count() . ' Unanswered Tickets - ' . date('Y-m-d');
-            $mail->Body    = $htmlContent;
+            $mail->Body = $htmlContent;
             $mail->AltBody = strip_tags($htmlContent);
 
             \Log::info('Sending unanswered tickets summary', [
@@ -164,12 +166,12 @@ class unansweredTicketMail extends Command
     {
         $mail = new PHPMailer(true);
         $mail->isSMTP();
-        $mail->Host       = config('mail.host');
-        $mail->SMTPAuth   = true;
-        $mail->Username   = config('mail.username');
-        $mail->Password   = config('mail.password');
+        $mail->Host = config('mail.host');
+        $mail->SMTPAuth = true;
+        $mail->Username = config('mail.username');
+        $mail->Password = config('mail.password');
         $mail->SMTPSecure = config('mail.encryption');
-        $mail->Port       = config('mail.port');
+        $mail->Port = config('mail.port');
         $mail->isHTML(true);
         $mail->setFrom('noreply-tcdportal-support@ics.com.ph', 'NoReply:TCDPORTALSupport');
 

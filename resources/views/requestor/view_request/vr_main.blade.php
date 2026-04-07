@@ -453,7 +453,7 @@
       } 
     </script>
 
-    <script src="{{ asset('public/js/view_request/vr_assignment.js') }}"></script>
+    <script src="{{ asset('js/view_request/vr_assignment.js') }}"></script>
     <script type="text/javascript">
       Dropzone.options.dropzone =
          {

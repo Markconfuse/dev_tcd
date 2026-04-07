@@ -17,6 +17,7 @@ class Kernel extends ConsoleKernel
         //
         \App\Console\Commands\unansweredTicketMail::class,
         \App\Console\Commands\unreadTicketMail::class,
+        \App\Console\Commands\SendGoogleChatWebhook::class,
     ];
 
     /**
@@ -34,11 +35,13 @@ class Kernel extends ConsoleKernel
         // })->everyMinute();
 
         //$schedule->command('mail:unread')->everyMinute();
-        
+
         // $schedule->command('mail:unanswered')->everyMinute();
 
         $schedule->command('mail:unanswered')->weekdays()->dailyAt('08:00');
         $schedule->command('mail:unread')->weekdays()->dailyAt('08:00');
+
+        $schedule->command('webhook:send-chat')->weekdays()->hourly()->between('08:00', '17:00');
     }
 
 

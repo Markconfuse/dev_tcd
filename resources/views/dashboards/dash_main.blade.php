@@ -88,7 +88,7 @@
 <script src="https://cdn.datatables.net/buttons/1.6.0/js/buttons.print.min.js"></script>
 <!-- <script src="{{ asset('public/adminlte/cdnjs-local/dashboard/buttons.print.min.js') }}"></script> -->
 
-<script src="{{ asset('public/js/render_ticket_table.js') }}"></script>
+<script src="{{ asset('js/render_ticket_table.js') }}"></script>
 
 <script type="text/javascript">
 

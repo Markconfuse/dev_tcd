@@ -6,7 +6,7 @@
 
 @section('css')
 
-<link rel="stylesheet" href="{{ asset('public/adminlte/plugins/iCheck/all.css') }}">
+<link rel="stylesheet" href="{{ asset('adminlte/plugins/iCheck/all.css') }}">
 <style type="text/css">
     .preloader {
     position: absolute;
@@ -82,11 +82,11 @@
 @stop
 
 @section('js')
-<script src="{{ asset('public/adminlte/plugins/iCheck/icheck.min.js') }}"></script>
+<script src="{{ asset('adminlte/plugins/iCheck/icheck.min.js') }}"></script>
 <script src="https://cdn.datatables.net/plug-ins/1.10.19/sorting/datetime-moment.js"></script>
 <!-- <script src="{{ asset('public/adminlte/cdnjs-local/datetime-moment.js') }}"></script> -->
 <!-- <script src="{{ asset('public/js/render_ticket_table.js') }}"></script> -->
-<script src="{{ asset('public/js/render_escalated_ticket_table.js') }}"></script>
+<script src="{{ asset('js/render_escalated_ticket_table.js') }}"></script>
 <script src="{{ asset('js/data_table_filter.js') }}"></script>
 <script type="text/javascript">
     $(function () {

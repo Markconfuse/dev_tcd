@@ -8,6 +8,7 @@ use App\Mail\MailTest;
 use App\Mail\UnreadRequestNotif;
 use App\Ticket;
 
+use Carbon\Carbon;
 use PHPMailer\PHPMailer\PHPMailer;
 use Illuminate\Console\Command;
 use Illuminate\Support\Facades\Mail;
@@ -39,6 +40,7 @@ class unreadTicketMail extends Command
             ->ticketStatusIsNot([4])
             ->ticketIsNotDeleted()
             ->ticketAssignedIsNotDeleted()
+            ->whereBetween('assign.date_assigned', [Carbon::now()->subHours(48), Carbon::now()])
             ->ticketIsUnread()
             ->ticketIsUnanswered()
             ->select([
@@ -90,7 +92,7 @@ class unreadTicketMail extends Command
             ])->render();
 
             $mail->Subject = 'Unread Ticket: ' . $email_subject;
-            $mail->Body    = $htmlContent;
+            $mail->Body = $htmlContent;
             $mail->AltBody = strip_tags($htmlContent);
 
             \Log::info('Sending unread ticket mail', [
@@ -135,7 +137,7 @@ class unreadTicketMail extends Command
             ])->render();
 
             $mail->Subject = 'Summary: ' . $tickets->count() . ' Unread Tickets - ' . date('Y-m-d');
-            $mail->Body    = $htmlContent;
+            $mail->Body = $htmlContent;
             $mail->AltBody = strip_tags($htmlContent);
 
             \Log::info('Sending unread tickets summary', [
@@ -159,12 +161,12 @@ class unreadTicketMail extends Command
     {
         $mail = new PHPMailer(true);
         $mail->isSMTP();
-        $mail->Host       = config('mail.host');
-        $mail->SMTPAuth   = true;
-        $mail->Username   = config('mail.username');
-        $mail->Password   = config('mail.password');
+        $mail->Host = config('mail.host');
+        $mail->SMTPAuth = true;
+        $mail->Username = config('mail.username');
+        $mail->Password = config('mail.password');
         $mail->SMTPSecure = config('mail.encryption');
-        $mail->Port       = config('mail.port');
+        $mail->Port = config('mail.port');
         $mail->isHTML(true);
         $mail->setFrom('noreply-tcdportal-support@ics.com.ph', 'NoReply:TCDPORTALSupport');
 
