@@ -106,8 +106,8 @@ class SendGoogleChatWebhook extends Command
             $isReminder = ($ticket->notification_type ?? '') === 'unassigned_hourly_after_3_days';
 
             $message = $isReminder
-                ? "⚠️ *Unassigned Ticket Reminder (Every Hour After 3 Days)*\n"
-                : "⚠️ *Unassigned Ticket Notification (60 Minutes)*\n";
+                ? "⚠️ *Unassigned Ticket Reminder*\n"
+                : "⚠️ *Unassigned Ticket Notification*\n";
             $message .= "*ID:* {$ticket->ticket_id}\n";
             $message .= "*Subject:* {$ticket->subject}\n";
             $message .= "*Requestor:* " . ($ticket->requestor_name ?? 'Unknown') . "\n";
