@@ -33,7 +33,7 @@
         }
 
         .content {
-            padding: 20px 40px 40px 40px;
+            padding: 20px 40px 20px 40px;
             color: #4f5660;
             font-size: 16px;
             line-height: 1.5;

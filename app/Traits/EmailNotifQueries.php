@@ -115,10 +115,9 @@ trait EmailNotifQueries
         $sBCC = explode(',', $eBCC);
         $gBCC = explode(' ', $sBCC[0]);
         
-
         $stat = Mail::to($gTo)
         ->cc($gCC)->bcc($gBCC)
-        ->send(new ProdNotif($_subject, $_content, $_to, $_cc));
+    ->send(new ProdNotif($_subject, $_content, $_to, $_cc));
 		
 		$checkMail = count(Mail::failures());
 		

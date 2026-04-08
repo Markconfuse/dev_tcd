@@ -17,18 +17,22 @@ class ProdEditReplyNotif extends Mailable implements ShouldQueue
     public $_subject;
     public $_content;
 	public $_eLink;
+    public $_to;
+    public $_cc;
 
     /**
      * Create a new message instance.
      * 
      * @return void
      */
-    public function __construct($_subject, $_content, $_eLink)
+    public function __construct($_subject, $_content, $_eLink, $_to = null, $_cc = null)
     {
 		
         $this->_subject = $_subject;
         $this->_content = $_content;
 		$this->_eLink = $_eLink;
+        $this->_to = $_to;
+        $this->_cc = $_cc;
     }
 
     /**

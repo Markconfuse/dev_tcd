@@ -16,16 +16,20 @@ class ProdNotif extends Mailable implements ShouldQueue
 
     public $_subject;
     public $_content;
+    public $_to;
+    public $_cc;
 
     /**
      * Create a new message instance.
      * 
      * @return void
      */
-    public function __construct($_subject, $_content)
+    public function __construct($_subject, $_content, $_to = null, $_cc = null)
     {
         $this->_subject = $_subject;
         $this->_content = $_content;
+        $this->_to = $_to;
+        $this->_cc = $_cc;
     }
 
     /**
