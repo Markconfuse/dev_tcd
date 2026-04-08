@@ -16,11 +16,11 @@ class Ticket extends Model
     public function scopeTicketQry($query)
     {
         return $query->join('lib_request_type as lrt', 'ticket.request_type_id', '=', 'lrt.request_type_id')
-                    ->join('vw_crm_accounts as esao', 'ticket.account_owner_id', '=', 'esao.AccountID')
-                    ->join('vw_crm_accounts as esrid', 'ticket.requestor_id', '=', 'esrid.AccountID')
-                    ->join('lib_status as ls', 'ticket.status_id', '=', 'ls.status_id')
-                    ->join('temp_search as tmp', 'ticket.ticket_id', '=', 'tmp.ticket_id', 'left outer')
-                    ->select(DB::raw("ticket.*, tmp.ticket_reply, tmp.OwnerName, tmp.last_transaction, ISNULL(tmp.reply_ctr, 0) as reply_ctr, ls.status_description, lrt.request_type, esrid.AccountID as ao_id, esrid.AccountName as requestor_name, esrid.NickName as requestor_nickname, esrid.Email as requestor_email, esrid.GAvatar as GAvatarReq, esrid.AccountGroup,
+            ->join('vw_crm_accounts as esao', 'ticket.account_owner_id', '=', 'esao.AccountID')
+            ->join('vw_crm_accounts as esrid', 'ticket.requestor_id', '=', 'esrid.AccountID')
+            ->join('lib_status as ls', 'ticket.status_id', '=', 'ls.status_id')
+            ->join('temp_search as tmp', 'ticket.ticket_id', '=', 'tmp.ticket_id', 'left outer')
+            ->select(DB::raw("ticket.*, tmp.ticket_reply, tmp.OwnerName, tmp.last_transaction, ISNULL(tmp.reply_ctr, 0) as reply_ctr, ls.status_description, lrt.request_type, esrid.AccountID as ao_id, esrid.AccountName as requestor_name, esrid.NickName as requestor_nickname, esrid.Email as requestor_email, esrid.GAvatar as GAvatarReq, esrid.AccountGroup,
                         esao.AccountID as req_id, esao.AccountName as ao_name, esao.AccountGroup as ao_group,
                         esao.NickName as ao_nickname, esao.Email as ao_email,esao.GAvatar as GAvatarAO"))->distinct();
     }
@@ -59,11 +59,11 @@ class Ticket extends Model
     public function scopeTicketQrySimp($query)
     {
         return $query->join('lib_request_type as lrt', 'ticket.request_type_id', '=', 'lrt.request_type_id')
-                    ->join('vw_crm_accounts as esao', 'ticket.account_owner_id', '=', 'esao.AccountID')
-                    ->join('vw_crm_accounts as esrid', 'ticket.requestor_id', '=', 'esrid.AccountID')
-                    ->join('lib_status as ls', 'ticket.status_id', '=', 'ls.status_id')
-                    ->leftJoin('escalated_tickets as et', 'ticket.ticket_id', '=', 'et.ticket_id')
-                    ->select(DB::raw("ticket.*, ls.status_description, lrt.request_type, 
+            ->join('vw_crm_accounts as esao', 'ticket.account_owner_id', '=', 'esao.AccountID')
+            ->join('vw_crm_accounts as esrid', 'ticket.requestor_id', '=', 'esrid.AccountID')
+            ->join('lib_status as ls', 'ticket.status_id', '=', 'ls.status_id')
+            ->leftJoin('escalated_tickets as et', 'ticket.ticket_id', '=', 'et.ticket_id')
+            ->select(DB::raw("ticket.*, ls.status_description, lrt.request_type, 
                              esrid.AccountID as ao_id, esrid.AccountName as requestor_name, esrid.NickName as requestor_nickname, esrid.Email as requestor_email, esrid.GAvatar as GAvatarReq, esrid.AccountGroup,
                              esao.AccountID as req_id, esao.AccountName as ao_name, esao.AccountGroup as ao_group,
                              esao.NickName as ao_nickname, esao.Email as ao_email ,esao.GAvatar as GAvatarAO
@@ -85,10 +85,10 @@ class Ticket extends Model
     public function scopeGetWithAssignment($query)
     {
         return Self::ticketQry()->joinAssign()->Assigned()
-                     ->addSelect(['assign.is_read', 'assign.is_answered']);
+            ->addSelect(['assign.is_read', 'assign.is_answered']);
     }
-	
-	public function scopeTicketAssignedIsNotDeleted($query)
+
+    public function scopeTicketAssignedIsNotDeleted($query)
     {
         return $query->where('assign.is_deleted', 0);
     }
@@ -98,7 +98,7 @@ class Ticket extends Model
         return $query->join('ticket_assignment as assign', 'assign.ticket_id', '=', 'ticket.ticket_id');
     }
 
-	public function scopeTicketStatusIsNot($query, array $status)
+    public function scopeTicketStatusIsNot($query, array $status)
     {
         return $query->whereNotIn('ticket.status_id', $status);
     }
@@ -107,8 +107,8 @@ class Ticket extends Model
     {
         return $query->join('vw_crm_accounts as esao', 'ticket.account_owner_id', '=', 'esao.AccountID');
     }
-	
-	public function scopeTicketIsNotDeleted($query)
+
+    public function scopeTicketIsNotDeleted($query)
     {
         return $query->where('ticket.is_deleted', 0);
     }
@@ -129,10 +129,10 @@ class Ticket extends Model
     }
 
     public function scopeAccountGroup($query)
-    {   
+    {
         $account_group = Session('userData')->AccountGroup;
-        if($account_group == 'BU8' || $account_group == 'BU12'|| $account_group == 'CE01') {
-            return $query->whereIn('esao.AccountGroup', ['BU8', 'BU12','CE01']);
+        if ($account_group == 'BU8' || $account_group == 'BU12' || $account_group == 'CE01') {
+            return $query->whereIn('esao.AccountGroup', ['BU8', 'BU12', 'CE01']);
         } else {
             return $query->where('esao.AccountGroup', Session('userData')->AccountGroup);
         }
@@ -140,7 +140,7 @@ class Ticket extends Model
 
     public function scopeExcludeAppsdev($query)
     {
-      return $query->whereNotIn('ticket.requestor_id', [56395,57681,57732]);
+        return $query->whereNotIn('ticket.requestor_id', [56395, 57681, 57732]);
     }
 
     public function scopeStatusID($query, $_statusID)
@@ -187,22 +187,22 @@ class Ticket extends Model
     {
         return $query->where('assign.owner_id', Session('userData')->account_id);
     }
-	
-	public function scopeRoblesAssigned($query)
+
+    public function scopeRoblesAssigned($query)
     {
         return $query->where('assign.owner_id', 57619)->orWhere('assign.owner_id', 57812);
     }
-	
-	public function scopeGetRoblesWithAssignment($query)
+
+    public function scopeGetRoblesWithAssignment($query)
     {
-        return Self::ticketQry()->joinAssign()->RoblesAssigned()
-                     ->addSelect(['assign.is_read', 'assign.is_answered']);
+        return self::ticketQry()->joinAssign()->RoblesAssigned()
+            ->addSelect(['assign.is_read', 'assign.is_answered']);
     }
 
-	public function scopeRoblesGetTXEscalatedPerEngr($query)
+    public function scopeRoblesGetTXEscalatedPerEngr($query)
     {
         return $query->join('ticket_assignment as assign', 'ticket.ticket_id', '=', 'assign.ticket_id')
-                        ->where('assign.owner_id', 57619)->orWhere('assign.owner_id', 57812);
+            ->where('assign.owner_id', 57619)->orWhere('assign.owner_id', 57812);
     }
 
     public function scopeAssignedWhere($query, $owner_id)
@@ -219,35 +219,35 @@ class Ticket extends Model
     {
         return $query->where('ticket.account_owner_id', Session('userData')->account_id);
     }
-	
+
     public function scopeTixReqOwner($query)
     {
         return $query->where('ticket.requestor_id', Session('userData')->account_id);
     }
-	
-	public function scopeJoinEscalated($query)
+
+    public function scopeJoinEscalated($query)
     {
         return $query->join('escalated_tickets as ET', 'ticket.ticket_id', '=', 'ET.ticket_id');
-    
+
     }
 
     public function scopeGetTXEscalated($query)
     {
         return $query->join('escalated_tickets as ET', 'ticket.ticket_id', '=', 'ET.ticket_id');
-                            
+
     }
 
     public function scopeGetTXEscalatedPerEngr($query)
     {
         return $query->join('ticket_assignment as assign', 'ticket.ticket_id', '=', 'assign.ticket_id')
-                        ->where('assign.owner_id',Session('userData')->account_id);
+            ->where('assign.owner_id', Session('userData')->account_id);
     }
 
     public function scopeGetReqEscalated($query)
     {
         return $query->join('escalated_tickets as ET', 'ticket.ticket_id', '=', 'ET.ticket_id')
-                            ->where('ET.is_approved', '!=', 0)->where('ET.is_approved', '!=', 0)
-                            ->where('ticket.account_owner_id', '=', Session('userData')->account_id);
+            ->where('ET.is_approved', '!=', 0)->where('ET.is_approved', '!=', 0)
+            ->where('ticket.account_owner_id', '=', Session('userData')->account_id);
     }
 
     // public function FunctionName($value='')
@@ -274,8 +274,8 @@ class Ticket extends Model
 
     //   return $stat;
     // }
-	
-	public static function getEngineerTicketsCount()
+
+    public static function getEngineerTicketsCount()
     {
         return self::join('ticket_assignment as a', 'ticket.ticket_id', '=', 'a.ticket_id')
             ->join('vw_tcd_accounts as v', 'a.owner_id', '=', 'v.account_id')
@@ -285,8 +285,8 @@ class Ticket extends Model
             ->where('ticket.is_deleted', 0)
             ->whereBetween('ticket.date_created', ['2025-01-01', '2025-12-31']);
     }
-	
-	public function scopeTicketIsRead($query)
+
+    public function scopeTicketIsRead($query)
     {
         return $query->where('assign.is_read', 1);
     }
@@ -299,5 +299,5 @@ class Ticket extends Model
     {
         return $query->where('assign.is_answered', 0);
     }
-    
+
 }

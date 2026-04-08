@@ -50,6 +50,7 @@ trait JsonQueries
         // 31 Pending
 
         $_role = Session::get('userData')->role_name;
+        $_id = Session::get('userData')->account_id;
         $_statusID = $request->sid;
         $_tTypeID = $request->tid;
 
@@ -144,12 +145,12 @@ trait JsonQueries
                         $query = Ticket::ticketQry()->where('esao.AccountGroup', 'CE01');
 						
 						if (Session('userData')->account_id == 57786) {
-                            $query = TTicket::ticketQry()->Where('ticket.requestor_id', 57616)
+                            $query = Ticket::ticketQry()->Where('ticket.requestor_id', 57616)
                             ->orWhere('ticket.requestor_id', 57786);
                         }
 						
 						if (Session('userData')->account_id == 57812) {
-                            $query = TTicket::ticketQry()->Where('ticket.requestor_id', 57619)
+                            $query = Ticket::ticketQry()->Where('ticket.requestor_id', 57619)
                             ->orWhere('ticket.requestor_id', 57812);
                         }
 						
@@ -454,7 +455,7 @@ trait JsonQueries
             );
 
         // Get only the last ticket per engineer
-        return DB::connection('tcd_login')->query()
+        return DB::connection('tcd_login')->table(DB::raw('ticket'))
             ->fromSub($sub, 'x')
             ->join('ticket as t', 'x.ticket_id', '=', 't.ticket_id')
             ->where('x.rn', 1)
@@ -583,7 +584,7 @@ trait JsonQueries
 
     }
 
-    public function engineerStatsCounter()
+    public function engineerStatsCounter(Request $request)
     {
         $engineers = $this->getAllEngineers();
         $today = Carbon::now()->toDateString();
@@ -646,7 +647,7 @@ trait JsonQueries
 
     public function countUnread()
     {
-        return response()->json(['count' => UserNotification::OwnNotif()->Unread()->get()->count()]);
+        return response()->json(['count' => UserNotification::OwnNotif()->Unread()->count()]);
     }
 
     public function getHistory(Request $request)
@@ -687,7 +688,7 @@ trait JsonQueries
                 $answeredctr = Ticket::statusID(3)->getCount();
                 $closedctr = Ticket::statusID(4)->getCount();
                 $reassignedctr = Ticket::joinAssign()->Deleted()->getCount();
-                $cebuctr = Ticket::ticketQry()->where('esao.AccountGroup', 'CE01')->get()->count();
+                $cebuctr = Ticket::ticketQry()->where('esao.AccountGroup', 'CE01')->distinct()->count('ticket.ticket_id');
 				$escalatedctr = Ticket::getTXEscalated()->getCount();
         $pendingctr = Ticket::joinAssign()->Assigned()->NotDeleted()->Unanswered()->getCount();
 
@@ -718,7 +719,7 @@ trait JsonQueries
             $answeredctr = Ticket::statusID(3)->ExcludeAppsdev()->getCount();
             $closedctr = Ticket::statusID(4)->ExcludeAppsdev()->getCount();
             $reassignedctr = Ticket::joinAssign()->Deleted()->getCount();
-            $cebuctr = Ticket::ticketQry()->where('esao.AccountGroup', 'CE01')->get()->count();
+            $cebuctr = Ticket::ticketQry()->where('esao.AccountGroup', 'CE01')->distinct()->count('ticket.ticket_id');
             $escalatedctr = Ticket::GetTXEscalated()->getCount();
 		
             return response()->json(['account_id' => $_account_id, 'user' => $_role, 'unassignedctr' => $unassignedctr, 'assignedctr' => $assignedctr,

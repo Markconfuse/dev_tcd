@@ -13,6 +13,7 @@ use PHPMailer\PHPMailer\PHPMailer;
 use Illuminate\Console\Command;
 use Illuminate\Support\Facades\Mail;
 use DB;
+use App\TicketNotification;
 
 class unreadTicketMail extends Command
 {
@@ -37,27 +38,67 @@ class unreadTicketMail extends Command
     {
         $allTickets = Ticket::joinAssign()
             ->leftJoin('vw_crm_accounts as assign_acc', 'assign.owner_id', '=', 'assign_acc.AccountID')
+            ->leftJoin('escalated_tickets as et', 'ticket.ticket_id', '=', 'et.ticket_id')
             ->ticketStatusIsNot([4])
             ->ticketIsNotDeleted()
             ->ticketAssignedIsNotDeleted()
-            ->whereBetween('assign.date_assigned', [Carbon::now()->subHours(48), Carbon::now()])
+            ->where('assign.date_assigned', '<=', Carbon::now()->subHours(24))
+            ->whereNull('et.ticket_id') // Exclude escalated tickets
             ->ticketIsUnread()
             ->ticketIsUnanswered()
             ->select([
                 'ticket.*',
                 'ticket.date_created as created_at',
+                'assign.date_assigned',
                 'assign_acc.AccountName as assigned_to',
                 'assign.owner_id as assigned_to_id',
                 'assign_acc.Email as assigned_to_email',
             ])
             ->get();
 
-        if ($allTickets->isEmpty()) {
-            $this->info('No unread tickets found.');
+        $ticketsToNotify = collect();
+
+        foreach ($allTickets as $ticket) {
+            $assignedAt = Carbon::parse($ticket->date_assigned);
+            
+            if ($assignedAt->diffInHours(Carbon::now()) >= 72) {
+                // 3 days Daily Warning
+                $recentNotice = TicketNotification::where('ticket_id', $ticket->ticket_id)
+                    ->where('type', 'unread_warning_daily')
+                    ->where('sent_at', '>=', Carbon::now()->subHours(24))
+                    ->exists();
+
+                if (!$recentNotice) {
+                    $ticketsToNotify->push($ticket);
+                    TicketNotification::create([
+                        'ticket_id' => $ticket->ticket_id,
+                        'type' => 'unread_warning_daily',
+                        'sent_at' => Carbon::now()
+                    ]);
+                }
+            } else {
+                // 1 Day Warning
+                $notified = TicketNotification::where('ticket_id', $ticket->ticket_id)
+                    ->where('type', 'unread_warning_1_day')
+                    ->exists();
+
+                if (!$notified) {
+                    $ticketsToNotify->push($ticket);
+                    TicketNotification::create([
+                        'ticket_id' => $ticket->ticket_id,
+                        'type' => 'unread_warning_1_day',
+                        'sent_at' => Carbon::now()
+                    ]);
+                }
+            }
+        }
+
+        if ($ticketsToNotify->isEmpty()) {
+            $this->info('No unread tickets required notification.');
             return;
         }
 
-        $groupedByEmployee = $allTickets->groupBy('assigned_to_id');
+        $groupedByEmployee = $ticketsToNotify->groupBy('assigned_to_id');
 
         foreach ($groupedByEmployee as $assigneeId => $tickets) {
             if ($tickets->count() > 1) {
@@ -91,7 +132,7 @@ class unreadTicketMail extends Command
                 'ticket' => $ticket
             ])->render();
 
-            $mail->Subject = 'Unread Ticket: ' . $email_subject;
+            $mail->Subject = 'WARNING: Unread Ticket Required: ' . $email_subject;
             $mail->Body = $htmlContent;
             $mail->AltBody = strip_tags($htmlContent);
 
@@ -136,7 +177,7 @@ class unreadTicketMail extends Command
                 'assigned_to' => $firstTicket->assigned_to,
             ])->render();
 
-            $mail->Subject = 'Summary: ' . $tickets->count() . ' Unread Tickets - ' . date('Y-m-d');
+            $mail->Subject = 'WARNING: Summary of ' . $tickets->count() . ' Unread Tickets - ' . date('Y-m-d');
             $mail->Body = $htmlContent;
             $mail->AltBody = strip_tags($htmlContent);
 

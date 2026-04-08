@@ -38,10 +38,10 @@ class Kernel extends ConsoleKernel
 
         // $schedule->command('mail:unanswered')->everyMinute();
 
-        $schedule->command('mail:unanswered')->weekdays()->dailyAt('08:00');
-        $schedule->command('mail:unread')->weekdays()->dailyAt('08:00');
+        $schedule->command('mail:unanswered')->weekdays()->hourly()->between('08:00', '18:00');
+        $schedule->command('mail:unread')->weekdays()->hourly()->between('08:00', '18:00');
 
-        $schedule->command('webhook:send-chat')->weekdays()->hourly()->between('08:00', '17:00');
+        $schedule->command('webhook:send-chat')->weekdays()->everyFiveMinutes()->between('08:00', '18:00');
     }
 
 

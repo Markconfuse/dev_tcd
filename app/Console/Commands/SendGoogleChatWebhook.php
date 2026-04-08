@@ -7,6 +7,7 @@ use Illuminate\Console\Command;
 use App\Ticket;
 use Carbon\Carbon;
 use Illuminate\Support\Facades\Http;
+use App\TicketNotification;
 
 class SendGoogleChatWebhook extends Command
 {
@@ -22,7 +23,7 @@ class SendGoogleChatWebhook extends Command
      *
      * @var string
      */
-    protected $description = 'Sends unanswered ticket notifications to Google Chat via Webhook one by one';
+    protected $description = 'Sends unassigned ticket notifications to Google Chat via Webhook one by one';
 
     /**
      * Execute the console command.
@@ -36,69 +37,55 @@ class SendGoogleChatWebhook extends Command
             return;
         }
 
-        // Fetching Unanswered Tickets (Read but not answered)
-        $unansweredTickets = Ticket::joinAssign()
-            ->leftJoin('vw_crm_accounts as assign_acc', 'assign.owner_id', '=', 'assign_acc.AccountID')
-            ->ticketStatusIsNot([4])
+        // Fetching Unassigned Tickets (Status ID = 1) older than 1 hour
+        $unassignedTickets = Ticket::leftJoin('vw_crm_accounts as esrid', 'ticket.requestor_id', '=', 'esrid.AccountID')
             ->ticketIsNotDeleted()
-            ->ticketAssignedIsNotDeleted()
-            ->whereBetween('assign.date_assigned', [Carbon::now()->subHours(48), Carbon::now()])
-            ->ticketIsRead()
-            ->ticketIsUnanswered()
+            ->statusID(1)
+            ->ExcludeAppsdev()
+            ->where('ticket.date_created', '<=', Carbon::now()->subHour())
+            ->where('ticket.date_created', '>=', Carbon::now()->subDays(3)) // Cap at 3 days
             ->select([
                 'ticket.ticket_id',
                 'ticket.subject',
                 'ticket.date_created',
-                'assign_acc.AccountName as assigned_to'
+                'esrid.AccountName as requestor_name'
             ])
             ->get();
 
-        $unreadTickets = Ticket::joinAssign()
-            ->leftJoin('vw_crm_accounts as assign_acc', 'assign.owner_id', '=', 'assign_acc.AccountID')
-            ->ticketStatusIsNot([4])
-            ->ticketIsNotDeleted()
-            ->ticketAssignedIsNotDeleted()
-            ->whereBetween('assign.date_assigned', [Carbon::now()->subHours(48), Carbon::now()])
-            ->ticketIsUnread()
-            ->ticketIsUnanswered()
-            ->select([
-                'ticket.ticket_id',
-                'ticket.subject',
-                'ticket.date_created',
-                'assign_acc.AccountName as assigned_to'
-            ])
-            ->get();
+        $ticketsToNotify = collect();
 
-        if ($unansweredTickets->isEmpty() && $unreadTickets->isEmpty()) {
-            $this->info('No unanswered or unread tickets found to send.');
+        foreach ($unassignedTickets as $ticket) {
+            $notified = TicketNotification::where('ticket_id', $ticket->ticket_id)
+                ->where('type', 'unassigned_1_hour')
+                ->exists();
+
+            if (!$notified) {
+                $ticketsToNotify->push($ticket);
+                TicketNotification::create([
+                    'ticket_id' => $ticket->ticket_id,
+                    'type' => 'unassigned_1_hour',
+                    'sent_at' => Carbon::now()
+                ]);
+            }
+        }
+
+        if ($ticketsToNotify->isEmpty()) {
+            $this->info('No unassigned tickets reached 1 hour or they were already notified.');
             return;
         }
 
-        $this->info('Sending ' . $unansweredTickets->count() . ' Unanswered and ' . $unreadTickets->count() . ' Unread tickets to Google Chat...');
+        $this->info('Sending ' . $ticketsToNotify->count() . ' Unassigned tickets to Google Chat...');
 
-        // Unanswered
-        foreach ($unansweredTickets as $ticket) {
-            $message = "⏳ *Unanswered Ticket Reminder*\n";
+        foreach ($ticketsToNotify as $ticket) {
+            $message = "⚠️ *Unassigned Ticket Notification*\n";
             $message .= "*ID:* {$ticket->ticket_id}\n";
             $message .= "*Subject:* {$ticket->subject}\n";
-            $message .= "*Assigned To:* " . ($ticket->assigned_to ?? 'Unassigned') . "\n";
+            $message .= "*Requestor:* " . ($ticket->requestor_name ?? 'Unknown') . "\n";
             $message .= "*Date Created:* {$ticket->date_created}\n";
             $message .= "*Link:* " . url('/view-request/' . base64_encode($ticket->ticket_id));
-            $this->sendToGoogleChat($webhookUrl, $message);
-            $this->info("Sent Unanswered Ticket #{$ticket->ticket_id}");
-            sleep(1);
-        }
 
-        // Unread
-        foreach ($unreadTickets as $ticket) {
-            $message = "⚠️ *Unread Ticket Reminder*\n";
-            $message .= "*ID:* {$ticket->ticket_id}\n";
-            $message .= "*Subject:* {$ticket->subject}\n";
-            $message .= "*Assigned To:* " . ($ticket->assigned_to ?? 'Unassigned') . "\n";
-            $message .= "*Date Created:* {$ticket->date_created}\n";
-            $message .= "*Link:* " . url('/view-request/' . base64_encode($ticket->ticket_id));
             $this->sendToGoogleChat($webhookUrl, $message);
-            $this->info("Sent Unread Ticket #{$ticket->ticket_id}");
+            $this->info("Sent Unassigned Ticket #{$ticket->ticket_id}");
             sleep(1);
         }
 
