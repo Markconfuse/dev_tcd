@@ -2,11 +2,17 @@
 
 @section('content')
      <h3 style="text-align: center; margin: 16px 0 32px 0; font-size: 16px;">TCD Portal: Unanswered Tickets Summary</h3>
-    <p style="font-size: 14px;">Hi {{ $ticket->assigned_to }},</p>
+    <p style="font-size: 14px;">Hi {{ $display_name ?? 'Engineer' }},</p>
 
-    <p style="font-size: 14px;">
-        You have an unanswered ticket that requires your attention. Before we get started, we just need to confirm that you have seen this.
-    </p>
+    @if(!empty($is_reminder))
+        <p style="font-size: 14px;">
+            There are TCD Portal tickets that you have not marked as answered yet, kindly check or provide a progress update if you need more time to avoid further delays:
+        </p>
+    @else
+        <p style="font-size: 14px;">
+            There are TCD Portal tickets that you have not answered yet, kindly check to avoid delays:
+        </p>
+    @endif
 
     <div style="text-align: center; margin: 30px 0;">
         <a href="{{ url('/view-request/' . base64_encode($ticket->ticket_id)) }}" 

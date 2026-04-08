@@ -43,6 +43,7 @@ class unreadTicketMail extends Command
             ->ticketIsNotDeleted()
             ->ticketAssignedIsNotDeleted()
             ->where('assign.date_assigned', '<=', Carbon::now()->subHours(24))
+            ->where('ticket.date_created', '>=', Carbon::now()->subDays(3))
             ->whereNull('et.ticket_id') // Exclude escalated tickets
             ->ticketIsUnread()
             ->ticketIsUnanswered()
@@ -51,6 +52,7 @@ class unreadTicketMail extends Command
                 'ticket.date_created as created_at',
                 'assign.date_assigned',
                 'assign_acc.AccountName as assigned_to',
+                'assign_acc.NickName as assigned_nickname',
                 'assign.owner_id as assigned_to_id',
                 'assign_acc.Email as assigned_to_email',
             ])
@@ -60,33 +62,34 @@ class unreadTicketMail extends Command
 
         foreach ($allTickets as $ticket) {
             $assignedAt = Carbon::parse($ticket->date_assigned);
+            $hasFirstNotice = TicketNotification::where('ticket_id', $ticket->ticket_id)
+                ->where('type', 'unread_warning_1_day')
+                ->exists();
             
+            // Weekend-safe catch-up: send the first notice anytime within the 3-day cap if missing.
+            if (!$hasFirstNotice) {
+                $ticket->notification_type = 'unread_warning_1_day';
+                $ticketsToNotify->push($ticket);
+                TicketNotification::create([
+                    'ticket_id' => $ticket->ticket_id,
+                    'type' => 'unread_warning_1_day',
+                    'sent_at' => Carbon::now()
+                ]);
+                continue;
+            }
+
             if ($assignedAt->diffInHours(Carbon::now()) >= 72) {
-                // 3 days Daily Warning
                 $recentNotice = TicketNotification::where('ticket_id', $ticket->ticket_id)
                     ->where('type', 'unread_warning_daily')
                     ->where('sent_at', '>=', Carbon::now()->subHours(24))
                     ->exists();
 
                 if (!$recentNotice) {
+                    $ticket->notification_type = 'unread_warning_daily';
                     $ticketsToNotify->push($ticket);
                     TicketNotification::create([
                         'ticket_id' => $ticket->ticket_id,
                         'type' => 'unread_warning_daily',
-                        'sent_at' => Carbon::now()
-                    ]);
-                }
-            } else {
-                // 1 Day Warning
-                $notified = TicketNotification::where('ticket_id', $ticket->ticket_id)
-                    ->where('type', 'unread_warning_1_day')
-                    ->exists();
-
-                if (!$notified) {
-                    $ticketsToNotify->push($ticket);
-                    TicketNotification::create([
-                        'ticket_id' => $ticket->ticket_id,
-                        'type' => 'unread_warning_1_day',
                         'sent_at' => Carbon::now()
                     ]);
                 }
@@ -98,7 +101,9 @@ class unreadTicketMail extends Command
             return;
         }
 
-        $groupedByEmployee = $ticketsToNotify->groupBy('assigned_to_id');
+        $groupedByEmployee = $ticketsToNotify->groupBy(function ($ticket) {
+            return ($ticket->assigned_to_id ?? 'unknown') . '|' . ($ticket->notification_type ?? 'unread_warning_1_day');
+        });
 
         foreach ($groupedByEmployee as $assigneeId => $tickets) {
             if ($tickets->count() > 1) {
@@ -112,7 +117,8 @@ class unreadTicketMail extends Command
     private function sendEmailSingle($ticket)
     {
         try {
-            $email_subject = $ticket->subject;
+            $engineerName = $this->displayName($ticket->assigned_nickname ?? null, $ticket->assigned_to ?? null);
+            $isReminder = ($ticket->notification_type ?? '') === 'unread_warning_daily';
             $email_assignee = $ticket->assigned_to_email;
             $email_cc = CarbonCopy::getCCEmail($ticket->ticket_id);
 
@@ -124,26 +130,36 @@ class unreadTicketMail extends Command
             $mail = $this->setupPHPMailer();
             $mail->addAddress(trim($email_assignee));
 
-            foreach ($this->transformCC($email_cc) as $cc) {
+            $ccList = $this->transformCC($email_cc);
+            if ($isReminder) {
+                $ccList = array_values(array_unique(array_merge($ccList, $this->escalationAdminEmails())));
+            }
+
+            foreach ($ccList as $cc) {
                 $mail->addCC($cc);
             }
 
             $htmlContent = view('mail.unread_tickets', [
-                'ticket' => $ticket
+                'ticket' => $ticket,
+                'display_name' => $engineerName,
+                'is_reminder' => $isReminder,
             ])->render();
 
-            $mail->Subject = 'WARNING: Unread Ticket Required: ' . $email_subject;
+            $mail->Subject = $isReminder
+                ? '(TCD Portal Reminder) ' . $engineerName . ', You have Unread Tickets'
+                : '(TCD Portal) ' . $engineerName . ', You have Unread Tickets';
             $mail->Body = $htmlContent;
             $mail->AltBody = strip_tags($htmlContent);
 
             \Log::info('Sending unread ticket mail', [
                 'ticket_id' => $ticket->ticket_id,
                 'to' => [$email_assignee],
-                'cc' => $this->transformCC($email_cc),
+                'cc' => $ccList,
                 'bcc' => $this->transformBCC(),
             ]);
 
             $mail->send();
+            sleep(10);
 
             \Log::info("✅ Unread single mail sent to: {$email_assignee}");
         } catch (\Exception $e) {
@@ -155,6 +171,8 @@ class unreadTicketMail extends Command
     {
         try {
             $firstTicket = $tickets->first();
+            $engineerName = $this->displayName($firstTicket->assigned_nickname ?? null, $firstTicket->assigned_to ?? null);
+            $isReminder = ($firstTicket->notification_type ?? '') === 'unread_warning_daily';
             $email_assignee = $firstTicket->assigned_to_email;
 
             if (empty($email_assignee)) {
@@ -168,16 +186,24 @@ class unreadTicketMail extends Command
             $mail->addAddress(trim($email_assignee));
 
             $allCCs = $this->collectCcEmails($tickets);
-            foreach ($this->transformCC($allCCs) as $cc) {
+            $ccList = $this->transformCC($allCCs);
+            if ($isReminder) {
+                $ccList = array_values(array_unique(array_merge($ccList, $this->escalationAdminEmails())));
+            }
+
+            foreach ($ccList as $cc) {
                 $mail->addCC($cc);
             }
 
             $htmlContent = view('mail.unread_tickets_table', [
                 'tickets' => $tickets,
-                'assigned_to' => $firstTicket->assigned_to,
+                'display_name' => $engineerName,
+                'is_reminder' => $isReminder,
             ])->render();
 
-            $mail->Subject = 'WARNING: Summary of ' . $tickets->count() . ' Unread Tickets - ' . date('Y-m-d');
+            $mail->Subject = $isReminder
+                ? '(TCD Portal Reminder) ' . $engineerName . ', You have Unread Tickets'
+                : '(TCD Portal) ' . $engineerName . ', You have Unread Tickets';
             $mail->Body = $htmlContent;
             $mail->AltBody = strip_tags($htmlContent);
 
@@ -185,11 +211,12 @@ class unreadTicketMail extends Command
                 'assignee_id' => $firstTicket->assigned_to_id ?? null,
                 'ticket_count' => $tickets->count(),
                 'to' => [$email_assignee],
-                'cc' => $this->transformCC($allCCs),
+                'cc' => $ccList,
                 'bcc' => $this->transformBCC(),
             ]);
 
             $mail->send();
+            sleep(10);
 
             \Log::info("✅ Unread table mail sent to: {$email_assignee} (Count: {$tickets->count()})");
 
@@ -256,5 +283,25 @@ class unreadTicketMail extends Command
         return array_values(array_filter($candidates, function ($email) {
             return filter_var($email, FILTER_VALIDATE_EMAIL);
         }));
+    }
+
+    private function displayName($nickname, $fullName)
+    {
+        $nickname = trim((string) $nickname);
+        if ($nickname !== '') {
+            return $nickname;
+        }
+
+        $firstName = trim((string) strtok(trim((string) $fullName), ' '));
+        return $firstName !== '' ? $firstName : 'Engineer';
+    }
+
+    private function escalationAdminEmails()
+    {
+        return [
+            'npacheco@ics.com.ph',
+            'jwong@ics.com.ph',
+            'macosta@ics.com.ph',
+        ];
     }
 }

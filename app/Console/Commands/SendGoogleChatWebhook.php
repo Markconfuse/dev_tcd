@@ -37,13 +37,12 @@ class SendGoogleChatWebhook extends Command
             return;
         }
 
-        // Fetching Unassigned Tickets (Status ID = 1) older than 1 hour
+        // Fetching unassigned tickets older than 60 minutes.
         $unassignedTickets = Ticket::leftJoin('vw_crm_accounts as esrid', 'ticket.requestor_id', '=', 'esrid.AccountID')
             ->ticketIsNotDeleted()
             ->statusID(1)
             ->ExcludeAppsdev()
-            ->where('ticket.date_created', '<=', Carbon::now()->subHour())
-            ->where('ticket.date_created', '>=', Carbon::now()->subDays(3)) // Cap at 3 days
+            ->where('ticket.date_created', '<=', Carbon::now()->subMinutes(60))
             ->select([
                 'ticket.ticket_id',
                 'ticket.subject',
@@ -54,17 +53,44 @@ class SendGoogleChatWebhook extends Command
 
         $ticketsToNotify = collect();
 
+        $now = Carbon::now();
+        $baseUrl = rtrim(env('APP_URL', config('app.url')), '/');
+
         foreach ($unassignedTickets as $ticket) {
-            $notified = TicketNotification::where('ticket_id', $ticket->ticket_id)
-                ->where('type', 'unassigned_1_hour')
+            $createdAt = Carbon::parse($ticket->date_created);
+
+            // Stage 1: one-time alert after 60 minutes, only within first 3 days.
+            if ($createdAt->greaterThanOrEqualTo($now->copy()->subDays(3))) {
+                $alreadySentInitial = TicketNotification::where('ticket_id', $ticket->ticket_id)
+                    ->whereIn('type', ['unassigned_30_min', 'unassigned_1_hour'])
+                    ->exists();
+
+                if (!$alreadySentInitial) {
+                    $ticket->notification_type = 'unassigned_1_hour';
+                    $ticketsToNotify->push($ticket);
+                    TicketNotification::create([
+                        'ticket_id' => $ticket->ticket_id,
+                        'type' => 'unassigned_1_hour',
+                        'sent_at' => $now,
+                    ]);
+                }
+
+                continue;
+            }
+
+            // Stage 2: after 3 days, send reminder every hour while still unassigned.
+            $sentInLastHour = TicketNotification::where('ticket_id', $ticket->ticket_id)
+                ->where('type', 'unassigned_hourly_after_3_days')
+                ->where('sent_at', '>=', $now->copy()->subHour())
                 ->exists();
 
-            if (!$notified) {
+            if (!$sentInLastHour) {
+                $ticket->notification_type = 'unassigned_hourly_after_3_days';
                 $ticketsToNotify->push($ticket);
                 TicketNotification::create([
                     'ticket_id' => $ticket->ticket_id,
-                    'type' => 'unassigned_1_hour',
-                    'sent_at' => Carbon::now()
+                    'type' => 'unassigned_hourly_after_3_days',
+                    'sent_at' => $now,
                 ]);
             }
         }
@@ -77,12 +103,16 @@ class SendGoogleChatWebhook extends Command
         $this->info('Sending ' . $ticketsToNotify->count() . ' Unassigned tickets to Google Chat...');
 
         foreach ($ticketsToNotify as $ticket) {
-            $message = "⚠️ *Unassigned Ticket Notification*\n";
+            $isReminder = ($ticket->notification_type ?? '') === 'unassigned_hourly_after_3_days';
+
+            $message = $isReminder
+                ? "⚠️ *Unassigned Ticket Reminder (Every Hour After 3 Days)*\n"
+                : "⚠️ *Unassigned Ticket Notification (60 Minutes)*\n";
             $message .= "*ID:* {$ticket->ticket_id}\n";
             $message .= "*Subject:* {$ticket->subject}\n";
             $message .= "*Requestor:* " . ($ticket->requestor_name ?? 'Unknown') . "\n";
             $message .= "*Date Created:* {$ticket->date_created}\n";
-            $message .= "*Link:* " . url('/view-request/' . base64_encode($ticket->ticket_id));
+            $message .= "*Link:* " . $baseUrl . '/view-request/' . base64_encode($ticket->ticket_id);
 
             $this->sendToGoogleChat($webhookUrl, $message);
             $this->info("Sent Unassigned Ticket #{$ticket->ticket_id}");

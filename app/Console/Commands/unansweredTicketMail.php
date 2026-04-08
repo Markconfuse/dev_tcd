@@ -46,6 +46,7 @@ class unansweredTicketMail extends Command
             ->ticketIsNotDeleted()
             ->ticketAssignedIsNotDeleted()
             ->where('assign.date_assigned', '<=', Carbon::now()->subHours(24))
+            ->where('ticket.date_created', '>=', Carbon::now()->subDays(3))
             ->whereNull('et.ticket_id') // Exclude escalated tickets
             ->ticketIsRead()
             ->ticketIsUnanswered()
@@ -54,6 +55,7 @@ class unansweredTicketMail extends Command
                 'ticket.date_created as created_at',
                 'assign.date_assigned',
                 'assign_acc.AccountName as assigned_to',
+                'assign_acc.NickName as assigned_nickname',
                 'assign.owner_id as assigned_to_id',
                 'assign_acc.Email as assigned_to_email',
             ])
@@ -63,33 +65,34 @@ class unansweredTicketMail extends Command
 
         foreach ($allTickets as $ticket) {
             $assignedAt = Carbon::parse($ticket->date_assigned);
+            $hasFirstNotice = TicketNotification::where('ticket_id', $ticket->ticket_id)
+                ->where('type', 'unanswered_warning_1_day')
+                ->exists();
             
+            // Weekend-safe catch-up: send the first notice anytime within the 3-day cap if missing.
+            if (!$hasFirstNotice) {
+                $ticket->notification_type = 'unanswered_warning_1_day';
+                $ticketsToNotify->push($ticket);
+                TicketNotification::create([
+                    'ticket_id' => $ticket->ticket_id,
+                    'type' => 'unanswered_warning_1_day',
+                    'sent_at' => Carbon::now()
+                ]);
+                continue;
+            }
+
             if ($assignedAt->diffInHours(Carbon::now()) >= 72) {
-                // 3 days Daily Warning
                 $recentNotice = TicketNotification::where('ticket_id', $ticket->ticket_id)
                     ->where('type', 'unanswered_warning_daily')
                     ->where('sent_at', '>=', Carbon::now()->subHours(24))
                     ->exists();
 
                 if (!$recentNotice) {
+                    $ticket->notification_type = 'unanswered_warning_daily';
                     $ticketsToNotify->push($ticket);
                     TicketNotification::create([
                         'ticket_id' => $ticket->ticket_id,
                         'type' => 'unanswered_warning_daily',
-                        'sent_at' => Carbon::now()
-                    ]);
-                }
-            } else {
-                // 1 Day Warning
-                $notified = TicketNotification::where('ticket_id', $ticket->ticket_id)
-                    ->where('type', 'unanswered_warning_1_day')
-                    ->exists();
-
-                if (!$notified) {
-                    $ticketsToNotify->push($ticket);
-                    TicketNotification::create([
-                        'ticket_id' => $ticket->ticket_id,
-                        'type' => 'unanswered_warning_1_day',
                         'sent_at' => Carbon::now()
                     ]);
                 }
@@ -101,7 +104,9 @@ class unansweredTicketMail extends Command
             return;
         }
 
-        $groupedByEmployee = $ticketsToNotify->groupBy('assigned_to_id');
+        $groupedByEmployee = $ticketsToNotify->groupBy(function ($ticket) {
+            return ($ticket->assigned_to_id ?? 'unknown') . '|' . ($ticket->notification_type ?? 'unanswered_warning_1_day');
+        });
 
         foreach ($groupedByEmployee as $assigneeId => $tickets) {
             if ($tickets->count() > 1) {
@@ -115,8 +120,8 @@ class unansweredTicketMail extends Command
     private function sendEmailSingle($ticket)
     {
         try {
-            $email_subject = $ticket->subject;
-            $email_content = 'You have 1 unanswered ticket requiring attention.';
+            $engineerName = $this->displayName($ticket->assigned_nickname ?? null, $ticket->assigned_to ?? null);
+            $isReminder = ($ticket->notification_type ?? '') === 'unanswered_warning_daily';
             $email_assignee = $ticket->assigned_to_email;
             $email_cc = CarbonCopy::getCCEmail($ticket->ticket_id);
 
@@ -133,10 +138,14 @@ class unansweredTicketMail extends Command
             }
 
             $htmlContent = view('mail.unanswered_tickets', [
-                'ticket' => $ticket
+                'ticket' => $ticket,
+                'display_name' => $engineerName,
+                'is_reminder' => $isReminder,
             ])->render();
 
-            $mail->Subject = 'WARNING: Action Required: ' . $email_subject;
+            $mail->Subject = $isReminder
+                ? '(TCD Portal Reminder) ' . $engineerName . ', You have Unanswered Tickets'
+                : '(TCD Portal) ' . $engineerName . ', You have Unanswered Tickets';
             $mail->Body = $htmlContent;
             $mail->AltBody = strip_tags($htmlContent);
 
@@ -148,6 +157,7 @@ class unansweredTicketMail extends Command
             ]);
 
             $mail->send();
+            sleep(10);
 
             \Log::info("✅ Single mail sent to: {$email_assignee}");
         } catch (Exception $e) {
@@ -159,6 +169,8 @@ class unansweredTicketMail extends Command
     {
         try {
             $firstTicket = $tickets->first();
+            $engineerName = $this->displayName($firstTicket->assigned_nickname ?? null, $firstTicket->assigned_to ?? null);
+            $isReminder = ($firstTicket->notification_type ?? '') === 'unanswered_warning_daily';
             $email_assignee = $firstTicket->assigned_to_email;
 
             if (empty($email_assignee)) {
@@ -178,10 +190,13 @@ class unansweredTicketMail extends Command
 
             $htmlContent = view('mail.unanswered_tickets_table', [
                 'tickets' => $tickets,
-                'assigned_to' => $firstTicket->assigned_to,
+                'display_name' => $engineerName,
+                'is_reminder' => $isReminder,
             ])->render();
 
-            $mail->Subject = 'WARNING: Summary of ' . $tickets->count() . ' Unanswered Tickets - ' . date('Y-m-d');
+            $mail->Subject = $isReminder
+                ? '(TCD Portal Reminder) ' . $engineerName . ', You have ' . $tickets->count() . ' Unanswered Tickets.'
+                : '(TCD Portal) ' . $engineerName . ', You have ' . $tickets->count() . ' Unanswered Tickets.';
             $mail->Body = $htmlContent;
             $mail->AltBody = strip_tags($htmlContent);
 
@@ -194,6 +209,7 @@ class unansweredTicketMail extends Command
             ]);
 
             $mail->send();
+            sleep(10);
 
             \Log::info("✅ Table mail sent to: {$email_assignee} (Count: {$tickets->count()})");
 
@@ -261,5 +277,16 @@ class unansweredTicketMail extends Command
         return array_values(array_filter($candidates, function ($email) {
             return filter_var($email, FILTER_VALIDATE_EMAIL);
         }));
+    }
+
+    private function displayName($nickname, $fullName)
+    {
+        $nickname = trim((string) $nickname);
+        if ($nickname !== '') {
+            return $nickname;
+        }
+
+        $firstName = trim((string) strtok(trim((string) $fullName), ' '));
+        return $firstName !== '' ? $firstName : 'Engineer';
     }
 }

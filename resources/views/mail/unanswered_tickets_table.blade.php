@@ -2,10 +2,16 @@
 
 @section('content')
     <h3 style="text-align: center; margin: 16px 0 32px 0; font-size: 16px;">TCD Portal: Unanswered Tickets Summary</h3>
-    <p style="font-size: 14px;">Hi {{ $assigned_to }},</p>
-    <p style="font-size: 14px;">
-        You have multiple unanswered tickets that require your attention. Please check the list below and address them in the TCD Portal.
-    </p>
+    <p style="font-size: 14px;">Hi {{ $display_name ?? 'Engineer' }},</p>
+    @if(!empty($is_reminder))
+        <p style="font-size: 14px;">
+            There are TCD Portal tickets that you have not marked as answered yet, kindly check or provide a progress update if you need more time to avoid further delays:
+        </p>
+    @else
+        <p style="font-size: 14px;">
+            There are TCD Portal tickets that you have not answered yet, kindly check to avoid delays:
+        </p>
+    @endif
 
     <div style="overflow-x: auto;">
         <table style="width: 100%; border-collapse: collapse; margin-top: 20px;">
