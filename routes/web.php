@@ -104,6 +104,10 @@ Route::get('getTicketPerBu', ['as' => 'getTicketPerBu', 'uses' => 'DashboardCont
 
 Route::get('getTicketPerEngineer', ['as' => 'getTicketPerEngineer', 'uses' => 'DashboardController@getTicketPerEngineer']);
 
+Route::get('getMonthlyTicketTrend', ['as' => 'getMonthlyTicketTrend', 'uses' => 'DashboardController@getMonthlyTicketTrend']);
+
+Route::get('getAvgHandlingTimePerEngineer', ['as' => 'getAvgHandlingTimePerEngineer', 'uses' => 'DashboardController@getAvgHandlingTimePerEngineer']);
+
 
 Route::get('/tickets/{tType}/{ownerId}', 
     'RequestController@getEngineerTicketData'

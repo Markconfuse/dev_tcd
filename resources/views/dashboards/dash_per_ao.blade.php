@@ -1,7 +1,7 @@
 <div class="col-md-12 col-sm-6 col-12">
   <div class="card">
     <div class="card-header border-0">
-      <h3 class="card-title">Tickets per AO</h3>
+      <h3 class="card-title">Tickets per AO{{ (isset($selectedYear) && $selectedYear !== 'All') ? ' (' . $selectedYear . ')' : '' }}</h3>
       <div class="card-tools">
         <button type="button" class="btn btn-tool" data-card-widget="collapse">
           <i class="fas fa-minus"></i>

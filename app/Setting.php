@@ -15,4 +15,11 @@ class Setting extends Model
         'created_by',
         'updated_by'
     ];
+
+    public static function getYearFilter()
+    {
+        $userId = session('userData') ? session('userData')->account_id : null;
+        $value = self::where('key', 'year_filter')->where('account_id', $userId)->value('value');
+        return $value ?? 'All';
+    }
 }

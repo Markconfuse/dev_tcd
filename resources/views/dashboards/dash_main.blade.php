@@ -12,25 +12,7 @@
 
 {{-- <h4>Under Maintenance</h4> --}}
 
-@php
-    $selectedYear = request('year', date('Y'));
-@endphp
 
-<div class="row mb-2">
-    <div class="col-12 d-flex justify-content-end align-items-center" style="gap: 8px;">
-        <label for="yearFilter" class="mb-0 font-weight-bold text-secondary" style="font-size:0.95rem; white-space:nowrap;">Filter by Year:</label>
-        <select id="yearFilter" class="form-control form-control-sm" style="width:110px;">
-            @php
-                $startYear = 2020;
-                $endYear = (int) date('Y');
-            @endphp
-            <option value="all" {{ $selectedYear === 'all' ? 'selected' : '' }}>All</option>
-            @for($y = $endYear; $y >= $startYear; $y--)
-                <option value="{{ $y }}" {{ (string)$y === (string)$selectedYear ? 'selected' : '' }}>{{ $y }}</option>
-            @endfor
-        </select>
-    </div>
-</div>
 
 @include('modals.mdl_dash_ticket')
 
@@ -48,6 +30,11 @@
 </div>
 
 @if(Session('userData')->role_name !== 'requestor')
+<div class="row">
+	@include('dashboards.dash_monthly_trend')
+	@include('dashboards.dash_avg_handling_time')
+</div>
+
 	@include('dashboards.dash_engineer')
 @endif
 
@@ -122,19 +109,19 @@
 		}
 		chartRequestType('{{ url('getChartRequestType') }}', 'horizontalBar');
 
-		getChartPerAO('{{ url('getChartPerAO') }}');
+		if ($('#chart-per-ao').length) {
+			getChartPerAO('{{ url('getChartPerAO') }}');
+		}
 	})
 
-	var selectedYear = '{{ request('year', date('Y')) }}';
-
-	$('#yearFilter').on('change', function() {
-		var year = $(this).val();
-		var url = new URL(window.location.href);
-		url.searchParams.set('year', year);
-		window.location.href = url.toString();
-	});
+	var selectedYear = '{{ $selectedYear }}';
 
 	function getChartPerAO(url) {
+		var aoCanvas = document.getElementById('chart-per-ao');
+		if (!aoCanvas) {
+			return;
+		}
+
 		$.get(url + '?year=' + selectedYear).done(function (data) {
 			var dataCount = [];
 			var dataLabel = [];
@@ -146,7 +133,7 @@
 
 			});
 
-			var chart = new Chart($('#chart-per-ao'), {
+			var chart = new Chart(aoCanvas, {
 				type: 'horizontalBar',
 				data: {
 					labels: dataLabel,
@@ -185,6 +172,11 @@
 
 
 	function chartRequestType(url, chartType) {
+		var requestTypeCanvas = document.getElementById('chart-request-type');
+		if (!requestTypeCanvas) {
+			return;
+		}
+
 		$.get(url + '?year=' + selectedYear).done(function (data) {
 			var dataCount = [];
 			var dataLabel = [];
@@ -195,7 +187,7 @@
 				dataLabel.push(value.request_type);
 			});
 
-			var chart = new Chart($('#chart-request-type'), {
+			var chart = new Chart(requestTypeCanvas, {
 				type: chartType,
 				data: {
 					labels: dataLabel,
@@ -235,6 +227,11 @@
 
 
 	function getChartPerBU(url) {
+		var buCanvas = document.getElementById('chart-per-bu');
+		if (!buCanvas) {
+			return;
+		}
+
 		$.get(url + '?year=' + selectedYear).done(function (data) {
 
 			var dataCount = [];
@@ -246,7 +243,7 @@
 				dataLabel.push(value.AccountGroup);
 			});
 
-			var chart = new Chart($('#chart-per-bu'), {
+			var chart = new Chart(buCanvas, {
 				type: 'horizontalBar',
 				data: {
 					labels: dataLabel,
@@ -297,7 +294,7 @@
 			window.location.href = url;
 		}
 
-	})
+	});
 
 	$('#tblPerCountEngr').on('click', '.spnPerEngineer', function () {
 		data = $(this).attr('data-id');
@@ -309,7 +306,188 @@
 
 		$('#spnTitle').text(type + ' tickets of ' + engineer);
 		$('#mdl_dash_ticket').modal('show');
-	})
+	});
+
+	// ─── Monthly Ticket Trend (Line Chart - Live Data) ───
+	@if(Session('userData')->role_name !== 'requestor')
+	(function() {
+		var monthlyTrendCanvas = document.getElementById('chart-monthly-trend');
+		if (!monthlyTrendCanvas) {
+			return;
+		}
+
+		$.get('{{ url('getMonthlyTicketTrend') }}').done(function(res) {
+			var months = (res && res.labels) ? res.labels : ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun', 'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec'];
+			var ticketsOpened = (res && res.opened) ? res.opened : [0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0];
+			var ticketsClosed = (res && res.closed) ? res.closed : [0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0];
+
+			new Chart(monthlyTrendCanvas, {
+				type: 'line',
+				data: {
+					labels: months,
+					datasets: [{
+						label: 'Tickets Opened',
+						borderColor: '#e74c3c',
+						backgroundColor: 'rgba(231, 76, 60, 0.1)',
+						data: ticketsOpened,
+						fill: true,
+						tension: 0.3,
+						pointRadius: 4,
+						pointBackgroundColor: '#e74c3c'
+					}, {
+						label: 'Tickets Closed',
+						borderColor: '#2ecc71',
+						backgroundColor: 'rgba(46, 204, 113, 0.1)',
+						data: ticketsClosed,
+						fill: true,
+						tension: 0.3,
+						pointRadius: 4,
+						pointBackgroundColor: '#2ecc71'
+					}]
+				},
+				options: {
+					maintainAspectRatio: false,
+					plugins: {
+						datalabels: { display: false }
+					},
+					legend: { display: true, position: 'top' },
+					scales: {
+						yAxes: [{ ticks: { beginAtZero: true } }]
+					}
+				}
+			});
+		}).fail(function() {
+			new Chart(monthlyTrendCanvas, {
+				type: 'line',
+				data: {
+					labels: ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun', 'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec'],
+					datasets: [{
+						label: 'Tickets Opened',
+						borderColor: '#e74c3c',
+						backgroundColor: 'rgba(231, 76, 60, 0.1)',
+						data: [0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0],
+						fill: true
+					}, {
+						label: 'Tickets Closed',
+						borderColor: '#2ecc71',
+						backgroundColor: 'rgba(46, 204, 113, 0.1)',
+						data: [0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0],
+						fill: true
+					}]
+				},
+				options: {
+					maintainAspectRatio: false,
+					plugins: {
+						datalabels: { display: false }
+					},
+					legend: { display: true, position: 'top' },
+					scales: {
+						yAxes: [{ ticks: { beginAtZero: true } }]
+					}
+				}
+			});
+		});
+	})();
+
+	// ─── Avg Handling Time per Engineer (Bar Chart - Live Data) ───
+	(function() {
+		var avgHandlingCanvas = document.getElementById('chart-avg-handling-time');
+		var avgHandlingContainer = document.getElementById('chart-avg-handling-time-container');
+		if (!avgHandlingCanvas || !avgHandlingContainer) {
+			return;
+		}
+
+		function resizeAvgHandlingChart(rows) {
+			var minHeight = 350;
+			var rowHeight = 34;
+			var computedHeight = Math.max(minHeight, rows * rowHeight);
+
+			avgHandlingCanvas.height = computedHeight;
+			avgHandlingContainer.style.height = computedHeight + 'px';
+		}
+
+		$.get('{{ url('getAvgHandlingTimePerEngineer') }}').done(function(res) {
+			var engineers = (res && res.labels && res.labels.length) ? res.labels : ['No data'];
+			var avgHours = (res && res.values && res.values.length) ? res.values : [0];
+
+			resizeAvgHandlingChart(engineers.length);
+
+			var barColors = avgHours.map(function(h) {
+				if (h <= 4) return '#2ecc71';
+				if (h <= 6) return '#f39c12';
+				return '#e74c3c';
+			});
+
+			new Chart(avgHandlingCanvas, {
+				type: 'horizontalBar',
+				data: {
+					labels: engineers,
+					datasets: [{
+						label: 'Avg. Hours',
+						backgroundColor: barColors,
+						data: avgHours,
+						barPercentage: 0.6
+					}]
+				},
+				options: {
+					maintainAspectRatio: false,
+					plugins: {
+						datalabels: {
+							anchor: 'end',
+							align: 'right',
+							color: '#333',
+							font: { weight: 'bold', size: 11 },
+							formatter: function(value) { return value + 'h'; }
+						}
+					},
+					legend: { display: false },
+					scales: {
+						yAxes: [{ ticks: { autoSkip: false } }],
+						xAxes: [{
+							ticks: { beginAtZero: true },
+							scaleLabel: { display: true, labelString: 'Hours' }
+						}]
+					}
+				}
+			});
+		}).fail(function() {
+			resizeAvgHandlingChart(1);
+
+			new Chart(avgHandlingCanvas, {
+				type: 'horizontalBar',
+				data: {
+					labels: ['No data'],
+					datasets: [{
+						label: 'Avg. Hours',
+						backgroundColor: ['#95a5a6'],
+						data: [0],
+						barPercentage: 0.6
+					}]
+				},
+				options: {
+					maintainAspectRatio: false,
+					plugins: {
+						datalabels: {
+							anchor: 'end',
+							align: 'right',
+							color: '#333',
+							font: { weight: 'bold', size: 11 },
+							formatter: function(value) { return value + 'h'; }
+						}
+					},
+					legend: { display: false },
+					scales: {
+						yAxes: [{ ticks: { autoSkip: false } }],
+						xAxes: [{
+							ticks: { beginAtZero: true },
+							scaleLabel: { display: true, labelString: 'Hours' }
+						}]
+					}
+				}
+			});
+		});
+	})();
+	@endif
 
 </script>
 
