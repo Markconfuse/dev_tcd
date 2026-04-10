@@ -172,10 +172,23 @@ function pad (str, max) {
 }
 
 function time(dateCreated) {
-    var checkDay = (new Date().getTime() - Date.parse(dateCreated)) / 86400000;
+    var nowMs = new Date().getTime();
+    var targetMs = Date.parse(dateCreated);
+    var diffMs = nowMs - targetMs;
+    var checkDay = diffMs / 86400000;
 
     if (checkDay < 1) {
-      return $.timeago(dateCreated);
+      var minutes = Math.floor(diffMs / 60000);
+      if (minutes < 1) {
+        return 'just now';
+      }
+
+      if (minutes < 60) {
+        return minutes + (minutes === 1 ? ' minute ago' : ' minutes ago');
+      }
+
+      var hours = Math.floor(minutes / 60);
+      return hours + (hours === 1 ? ' hour ago' : ' hours ago');
     } else {
       var d = new Date(dateCreated);
       return formatDate(d);
