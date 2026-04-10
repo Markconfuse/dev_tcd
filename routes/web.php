@@ -156,6 +156,8 @@ Route::post('edit-brand',['as' => 'edit-brand', 'uses' => 'MaintenanceController
 
 //End of System Maintenance
 
+// Settings
+Route::post('settings/update', ['as' => 'settings.update', 'uses' => 'SettingsController@update']);
 
 Route::get('viewFile/{file_name}',['as' => 'viewFile', 'uses' => 'RequestController@viewFile']);
 

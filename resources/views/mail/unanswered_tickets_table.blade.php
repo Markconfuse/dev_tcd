@@ -5,11 +5,11 @@
     <p style="font-size: 14px;">Hi {{ $display_name ?? 'Engineer' }},</p>
     @if(!empty($is_reminder))
         <p style="font-size: 14px;">
-            There are TCD Portal tickets that you have not marked as answered yet, kindly check or provide a progress update if you need more time to avoid further delays:
+            There are TCD Portal tickets that you have not marked as answered yet, kindly check or provide a progress update if you need more time to avoid further delays
         </p>
     @else
         <p style="font-size: 14px;">
-            There are TCD Portal tickets that you have not answered yet, kindly check to avoid delays:
+            There are TCD Portal tickets that you have not answered yet, kindly check to avoid delays
         </p>
     @endif
 

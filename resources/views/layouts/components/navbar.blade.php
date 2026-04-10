@@ -85,6 +85,12 @@
       </li> --}}
 
       <div>
+        <a href="#" class="btn btn-info btn-sm btn-flat mr-2" data-toggle="modal" data-target="#settingsModal">
+          <i class="fa fa-fw fa-cog"></i> Settings
+        </a>
+      </div>
+
+      <div>
         <a href="https://proport.ics.com.ph/google/quickie?em={{ base64_encode(Session::get('userData')->Email) }}"  target="_blank" class="btn bg-pink btn-sm btn-flat mr-2">
           <i class="fa fa-fw fa-ticket"></i> ProPort
         </a>
@@ -104,3 +110,5 @@
     </ul>
 
   </nav>
+
+@include('layouts.components.settings_modal')

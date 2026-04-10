@@ -120,17 +120,7 @@
             </div>
 
             <div class="modal-body">
-                <p><strong>ENGINEER REMINDERS:</strong></p>
-                <p>Make sure that below components and considerations are checked before sending:</p>
-                <ul class="text-sm">
-                    <li><strong>TRANSCEIVERS</strong> - Compatibility, quantity, form factor (SFP+/QSFP/BASE-T, etc.), fiber type (single-mode/multi-mode), transmission distance (SR/LR/etc.), supported protocol (IP for ethernet or iSCSI / SCSI for FC storage), speed (1GB, 10GB, 25GB, etc. for ethernet / 8GB, 16GB, 32GB, etc. for FC storage)</li>
-                    <li><strong>Cables</strong> - Quantity, length, type, compatibility to existing device if part of the requirement for DAC</li>
-                    <li><strong>Licenses</strong> - Quantity, edition, hardware and software compatibility, scope and design considerations</li>
-                    <li><strong>Services</strong> - warranty, coverage, third-party service provider if needed</li>
-                    <li><strong>Completeness of components</strong> based on design or scope of the requirement especially on the connectivity</li>
-                    <li><strong>Compliance</strong> of each component based on the Terms of Reference for bids</li>
-                    <li><strong>High level Scope of Work</strong> or summary if applicable</li>
-                </ul>
+                {!! \App\Setting::where('key', 'engineer_reminder')->value('value') !!}
                 <p class="text-danger mb-0 mt-3">
                     <strong>Are you sure you want to mark this request as answered?</strong>
                 </p>
