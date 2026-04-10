@@ -31,6 +31,19 @@ trait JsonQueries
         return LibHeads::where('account_id', Session('userData')->account_id)->count();
     }
 
+    private function applyYearValues($query, $column, array $yearValues)
+    {
+        if (empty($yearValues)) {
+            return $query;
+        }
+
+        if (count($yearValues) === 1) {
+            return $query->whereRaw("YEAR({$column}) = ?", [$yearValues[0]]);
+        }
+
+        return $query->whereIn(DB::raw("YEAR({$column})"), $yearValues);
+    }
+
     public function searchTix(Request $request)
     {
         $_aoID = base64_decode($request->aoID);
@@ -55,7 +68,8 @@ trait JsonQueries
         $_tTypeID = $request->tid;
 
         $selectedYear = \App\Setting::getYearFilter();
-        $filterByYear = ($selectedYear !== 'All');
+        $yearValues = \App\Setting::getYearFilterValues($selectedYear);
+        $filterByYear = !empty($yearValues);
         // Status IDs that are action queues - NEVER apply year filter
         $actionQueueStatuses = ['1', '2', '5', '15', '16', '31'];
 
@@ -400,7 +414,7 @@ trait JsonQueries
 
             // Apply year filter for historical statuses only
             if ($filterByYear && !in_array($_statusID, $actionQueueStatuses)) {
-                $query->whereRaw('YEAR(ticket.date_created) = ?', [$selectedYear]);
+                $this->applyYearValues($query, 'ticket.date_created', $yearValues);
             }
 
             \Log::info('DataTables raw data count: ' . $query->count());
@@ -677,7 +691,8 @@ trait JsonQueries
         $_account_id = Session::get('userData')->account_id;
 
         $selectedYear = \App\Setting::getYearFilter();
-        $filterByYear = ($selectedYear !== 'All');
+        $yearValues = \App\Setting::getYearFilterValues($selectedYear);
+        $filterByYear = !empty($yearValues);
 
         if($_role == 'engineer') {
 			
@@ -686,14 +701,18 @@ trait JsonQueries
                 $pendingctr = Ticket::joinAssign()->RoblesAssigned()->NotDeleted()->Unanswered()->getCount();
                 \Log::info('pen: '. $pendingctr);
                 $answeredctr = Ticket::joinAssign()->RoblesAssigned()->NotDeleted()->Answered()->notClosed()
-                                ->when($filterByYear, fn($q) => $q->whereRaw('YEAR(ticket.date_created) = ?', [$selectedYear]))->getCount();
+                                ->when($filterByYear, function ($q) use ($yearValues) {
+                                    return $this->applyYearValues($q, 'ticket.date_created', $yearValues);
+                                })->getCount();
                       \Log::info('ans: '. $answeredctr);
                 $closedctr = Ticket::joinAssign()->RoblesAssigned()->NotDeleted()->statusID(4)
-                                ->when($filterByYear, fn($q) => $q->whereRaw('YEAR(ticket.date_created) = ?', [$selectedYear]))->getCount();
+                                ->when($filterByYear, function ($q) use ($yearValues) {
+                                    return $this->applyYearValues($q, 'ticket.date_created', $yearValues);
+                                })->getCount();
                 $reassignedctr = Ticket::joinAssign()->RoblesAssigned()->Deleted()->getCount();
                 $escalatedQuery = Ticket::RoblesGetTXEscalatedPerEngr()->GetTXEscalated();
                 if ($filterByYear) {
-                    $escalatedQuery->whereRaw('YEAR(ticket.date_created) = ?', [$selectedYear]);
+                    $this->applyYearValues($escalatedQuery, 'ticket.date_created', $yearValues);
                 }
                 $escalatedctr = $escalatedQuery->getCount();
 				
@@ -705,18 +724,22 @@ trait JsonQueries
                 $unassignedctr = Ticket::statusID(1)->getCount();
                 $assignedctr = Ticket::statusID(2)->getCount();
                 $answeredctr = Ticket::statusID(3)
-                                ->when($filterByYear, fn($q) => $q->whereRaw('YEAR(date_created) = ?', [$selectedYear]))->getCount();
+                                ->when($filterByYear, function ($q) use ($yearValues) {
+                                    return $this->applyYearValues($q, 'date_created', $yearValues);
+                                })->getCount();
                 $closedctr = Ticket::statusID(4)
-                                ->when($filterByYear, fn($q) => $q->whereRaw('YEAR(date_created) = ?', [$selectedYear]))->getCount();
+                                ->when($filterByYear, function ($q) use ($yearValues) {
+                                    return $this->applyYearValues($q, 'date_created', $yearValues);
+                                })->getCount();
                 $reassignedctr = Ticket::joinAssign()->Deleted()->getCount();
                 $cebuQuery = Ticket::ticketQry()->where('esao.AccountGroup', 'CE01');
                 if ($filterByYear) {
-                    $cebuQuery->whereRaw('YEAR(ticket.date_created) = ?', [$selectedYear]);
+                    $this->applyYearValues($cebuQuery, 'ticket.date_created', $yearValues);
                 }
                 $cebuctr = $cebuQuery->distinct()->count('ticket.ticket_id');
                 $escalatedQuery = Ticket::getTXEscalated();
                 if ($filterByYear) {
-                    $escalatedQuery->whereRaw('YEAR(ticket.date_created) = ?', [$selectedYear]);
+                    $this->applyYearValues($escalatedQuery, 'ticket.date_created', $yearValues);
                 }
                 $escalatedctr = $escalatedQuery->getCount();
         $pendingctr = Ticket::joinAssign()->Assigned()->NotDeleted()->Unanswered()->getCount();
@@ -729,13 +752,17 @@ trait JsonQueries
             } else {
                 $pendingctr = Ticket::joinAssign()->Assigned()->NotDeleted()->Unanswered()->getCount();
                 $answeredctr = Ticket::joinAssign()->Assigned()->NotDeleted()->Answered()->notClosed()
-                                ->when($filterByYear, fn($q) => $q->whereRaw('YEAR(ticket.date_created) = ?', [$selectedYear]))->getCount();
+                                ->when($filterByYear, function ($q) use ($yearValues) {
+                                    return $this->applyYearValues($q, 'ticket.date_created', $yearValues);
+                                })->getCount();
                 $closedctr = Ticket::joinAssign()->Assigned()->NotDeleted()->statusID(4)
-                                ->when($filterByYear, fn($q) => $q->whereRaw('YEAR(ticket.date_created) = ?', [$selectedYear]))->getCount();
+                                ->when($filterByYear, function ($q) use ($yearValues) {
+                                    return $this->applyYearValues($q, 'ticket.date_created', $yearValues);
+                                })->getCount();
                 $reassignedctr = Ticket::joinAssign()->Assigned()->Deleted()->getCount();
                 $escalatedQuery = Ticket::GetTXEscalatedPerEngr()->GetTXEscalated();
                 if ($filterByYear) {
-                    $escalatedQuery->whereRaw('YEAR(ticket.date_created) = ?', [$selectedYear]);
+                    $this->applyYearValues($escalatedQuery, 'ticket.date_created', $yearValues);
                 }
                 $escalatedctr = $escalatedQuery->getCount();
 
@@ -752,18 +779,22 @@ trait JsonQueries
             // $unassignedctr = Ticket::statusID(1)->where('ticket.requestor_id', '!=', 57732)->getCount();
             $assignedctr = Ticket::statusID(2)->ExcludeAppsdev()->getCount();
             $answeredctr = Ticket::statusID(3)->ExcludeAppsdev()
-                            ->when($filterByYear, fn($q) => $q->whereRaw('YEAR(date_created) = ?', [$selectedYear]))->getCount();
+                            ->when($filterByYear, function ($q) use ($yearValues) {
+                                return $this->applyYearValues($q, 'date_created', $yearValues);
+                            })->getCount();
             $closedctr = Ticket::statusID(4)->ExcludeAppsdev()
-                            ->when($filterByYear, fn($q) => $q->whereRaw('YEAR(date_created) = ?', [$selectedYear]))->getCount();
+                            ->when($filterByYear, function ($q) use ($yearValues) {
+                                return $this->applyYearValues($q, 'date_created', $yearValues);
+                            })->getCount();
             $reassignedctr = Ticket::joinAssign()->Deleted()->getCount();
             $cebuQuery = Ticket::ticketQry()->where('esao.AccountGroup', 'CE01');
             if ($filterByYear) {
-                $cebuQuery->whereRaw('YEAR(ticket.date_created) = ?', [$selectedYear]);
+                $this->applyYearValues($cebuQuery, 'ticket.date_created', $yearValues);
             }
             $cebuctr = $cebuQuery->distinct()->count('ticket.ticket_id');
             $escalatedQuery = Ticket::GetTXEscalated();
             if ($filterByYear) {
-                $escalatedQuery->whereRaw('YEAR(ticket.date_created) = ?', [$selectedYear]);
+                $this->applyYearValues($escalatedQuery, 'ticket.date_created', $yearValues);
             }
             $escalatedctr = $escalatedQuery->getCount();
 		
@@ -777,9 +808,13 @@ trait JsonQueries
                 $unassignedctr = Ticket::joinESAO()->statusID(1)->AccountGroup()->getCount();
                 $assignedctr = Ticket::joinESAO()->statusID(2)->AccountGroup()->getCount();
                 $answeredctr = Ticket::joinESAO()->statusID(3)->AccountGroup()
-                                ->when($filterByYear, fn($q) => $q->whereRaw('YEAR(ticket.date_created) = ?', [$selectedYear]))->getCount();
+                                ->when($filterByYear, function ($q) use ($yearValues) {
+                                    return $this->applyYearValues($q, 'ticket.date_created', $yearValues);
+                                })->getCount();
                 $closedctr = Ticket::joinESAO()->statusID(4)->AccountGroup()
-                                ->when($filterByYear, fn($q) => $q->whereRaw('YEAR(ticket.date_created) = ?', [$selectedYear]))->getCount();
+                                ->when($filterByYear, function ($q) use ($yearValues) {
+                                    return $this->applyYearValues($q, 'ticket.date_created', $yearValues);
+                                })->getCount();
             } else {
                 $unassignedctr = Ticket::joinCarbon()->TixAccOwner()->statusID(1)
                                     ->orWhere->TixReqOwner()->statusID(1)
@@ -792,11 +827,15 @@ trait JsonQueries
                 $answeredctr = Ticket::joinCarbon()->TixAccOwner()->statusID(3)
                                     ->orWhere->CC()->statusID(3)
                                     ->orWhere->TixReqOwner()->statusID(3)
-                                    ->when($filterByYear, fn($q) => $q->whereRaw('YEAR(ticket.date_created) = ?', [$selectedYear]))->getCount();
+                                    ->when($filterByYear, function ($q) use ($yearValues) {
+                                        return $this->applyYearValues($q, 'ticket.date_created', $yearValues);
+                                    })->getCount();
                 $closedctr = Ticket::joinCarbon()->TixAccOwner()->statusID(4)
                                     ->orWhere->CC()->statusID(4)
                                     ->orWhere->TixReqOwner()->statusID(4)
-                                    ->when($filterByYear, fn($q) => $q->whereRaw('YEAR(ticket.date_created) = ?', [$selectedYear]))->getCount();
+                                    ->when($filterByYear, function ($q) use ($yearValues) {
+                                        return $this->applyYearValues($q, 'ticket.date_created', $yearValues);
+                                    })->getCount();
             }
 
             return response()->json(['account_id' => $_account_id, 'user' => $_role, 'unassignedctr' => $unassignedctr, 'assignedctr' => $assignedctr,

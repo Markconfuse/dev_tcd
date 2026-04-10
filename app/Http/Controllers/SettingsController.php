@@ -33,25 +33,43 @@ class SettingsController extends Controller
     {
         $userId = session('userData') ? session('userData')->account_id : 'System';
 
-        DB::transaction(function () use ($request, $userId) {
+        $yearFrom = $request->input('year_from', $request->input('year', 'All'));
+        $yearTo = $request->input('year_to');
+
+        if ($yearFrom === 'All' || empty($yearFrom)) {
+            $yearValue = 'All';
+        } else {
+            $from = (int) $yearFrom;
+            $to = $yearTo ? (int) $yearTo : $from;
+
+            if ($to < $from) {
+                $tmp = $from;
+                $from = $to;
+                $to = $tmp;
+            }
+
+            $yearValue = ($from === $to) ? (string) $from : ($from . '-' . $to);
+        }
+
+        DB::transaction(function () use ($userId, $yearValue) {
             $setting = Setting::where('key', 'year_filter')->where('account_id', $userId)->first();
 
             if ($setting) {
-                $setting->value = $request->year;
+                $setting->value = $yearValue;
                 $setting->updated_by = $userId;
                 $setting->save();
 
-                $this->saveLogs('Updated user setting: year_filter to ' . $request->year);
+                $this->saveLogs('Updated user setting: year_filter to ' . $yearValue);
             } else {
                 Setting::create([
                     'account_id' => $userId,
                     'key' => 'year_filter',
-                    'value' => $request->year,
+                    'value' => $yearValue,
                     'created_by' => $userId,
                     'updated_by' => $userId
                 ]);
 
-                $this->saveLogs('Created user setting: year_filter to ' . $request->year);
+                $this->saveLogs('Created user setting: year_filter to ' . $yearValue);
             }
         });
 

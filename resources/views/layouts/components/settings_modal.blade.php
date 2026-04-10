@@ -41,19 +41,42 @@
                         title="<div class='text-left'><strong>This setting only affects your own account view.</strong><br>It does not change what other users see.<br><br>Use this to filter dashboard/reports by year.<br><br><strong>Not affected by this filter (always shown if still open):</strong><br>- Unread Tickets<br>- Unanswered<br>- In Progress<br>- Assigned to Me<br><br>These action lists stay visible so you do not miss pending work, even if tickets are from older years.</div>"></i>
                     </label>
                     <p class="text-muted small mb-3">Controls the default application year filter.</p>
-                    <select name="year" id="yearFilterSetting" class="form-control" style="max-width: 200px;"
-                      onchange="this.form.submit()">
+                    <select name="year_from" id="yearFromSetting" class="form-control d-inline-block" style="max-width: 150px;">
                       @php
                         // Fetch the currently active setting or default to current year.
-                        $currentYearFilter = \App\Setting::where('key', 'year_filter')->where('account_id', Session('userData')->account_id)->value('value') ?? date('Y');
+                        $currentYearFilter = \App\Setting::where('key', 'year_filter')->where('account_id', Session('userData')->account_id)->value('value') ?? 'All';
                         $startYear = 2021;
                         $endYear = date('Y') + 1; 
+
+                        $selectedFrom = 'All';
+                        $selectedTo = $endYear;
+
+                        if ($currentYearFilter !== 'All') {
+                          $yearValues = \App\Setting::getYearFilterValues($currentYearFilter);
+                          if (!empty($yearValues)) {
+                            $selectedFrom = min($yearValues);
+                            $selectedTo = max($yearValues);
+                          }
+                        }
                       @endphp
-                      <option value="All" {{ $currentYearFilter == 'All' ? 'selected' : '' }}>All</option>
+                      <option value="All" {{ $selectedFrom === 'All' ? 'selected' : '' }}>All</option>
                       @for($y = $endYear; $y >= $startYear; $y--)
-                        <option value="{{ $y }}" {{ $currentYearFilter == $y ? 'selected' : '' }}>{{ $y }}</option>
+                        <option value="{{ $y }}" {{ (string)$selectedFrom === (string)$y ? 'selected' : '' }}>{{ $y }}</option>
                       @endfor
                     </select>
+
+                    <span class="mx-2">to</span>
+
+                    <select name="year_to" id="yearToSetting" class="form-control d-inline-block" style="max-width: 150px;"
+                      {{ $selectedFrom === 'All' ? 'disabled' : '' }}>
+                      @for($y = $endYear; $y >= $startYear; $y--)
+                        <option value="{{ $y }}" {{ (string)$selectedTo === (string)$y ? 'selected' : '' }}>{{ $y }}</option>
+                      @endfor
+                    </select>
+
+                    <div class="mt-3">
+                      <button type="submit" class="btn btn-primary"><i class="fas fa-save"></i> Save Changes</button>
+                    </div>
                   </div>
                 </form>
               </div>
@@ -146,5 +169,9 @@
 
     // Initialize tooltips explicitly inside the modal
     $('[data-toggle="tooltip"]').tooltip();
+
+    $('#yearFromSetting').on('change', function () {
+      $('#yearToSetting').prop('disabled', $(this).val() === 'All');
+    });
   });
 </script>
