@@ -46,7 +46,6 @@ class unansweredTicketMail extends Command
             ->ticketIsNotDeleted()
             ->ticketAssignedIsNotDeleted()
             ->where('assign.date_assigned', '<=', Carbon::now()->subHours(24))
-            ->where('ticket.date_created', '>=', Carbon::now()->subDays(3))
             ->whereNull('et.ticket_id') // Exclude escalated tickets
             ->ticketIsRead()
             ->ticketIsUnanswered()
@@ -65,12 +64,28 @@ class unansweredTicketMail extends Command
 
         foreach ($allTickets as $ticket) {
             $assignedAt = Carbon::parse($ticket->date_assigned);
-            $hasFirstNotice = TicketNotification::where('ticket_id', $ticket->ticket_id)
+            $hoursSinceAssigned = $assignedAt->diffInHours(Carbon::now());
+
+            $dayOneNotice = TicketNotification::where('ticket_id', $ticket->ticket_id)
                 ->where('type', 'unanswered_warning_1_day')
+                ->orderByDesc('sent_at')
+                ->first();
+
+            $hasDayOneNotice = !is_null($dayOneNotice);
+
+            $threeDayNotice = TicketNotification::where('ticket_id', $ticket->ticket_id)
+                ->whereIn('type', ['unanswered_warning_3_day', 'unanswered_warning_1_day'])
+                ->orderByDesc('sent_at')
+                ->first();
+
+            $hasThreeDayNotice = !is_null($threeDayNotice);
+
+            $hasFiveDayNotice = TicketNotification::where('ticket_id', $ticket->ticket_id)
+                ->where('type', 'unanswered_warning_5_day')
                 ->exists();
-            
-            // Weekend-safe catch-up: send the first notice anytime within the 3-day cap if missing.
-            if (!$hasFirstNotice) {
+
+            // Stage 0: notify at/after 1st day if not yet sent.
+            if ($hoursSinceAssigned >= 24 && !$hasDayOneNotice) {
                 $ticket->notification_type = 'unanswered_warning_1_day';
                 $ticketsToNotify->push($ticket);
                 TicketNotification::create([
@@ -81,18 +96,31 @@ class unansweredTicketMail extends Command
                 continue;
             }
 
-            if ($assignedAt->diffInHours(Carbon::now()) >= 72) {
-                $recentNotice = TicketNotification::where('ticket_id', $ticket->ticket_id)
-                    ->where('type', 'unanswered_warning_daily')
-                    ->where('sent_at', '>=', Carbon::now()->subHours(24))
-                    ->exists();
-
-                if (!$recentNotice) {
-                    $ticket->notification_type = 'unanswered_warning_daily';
+            // Stage 1: notify at 3rd day, 48 hours after Day 1 notice.
+            if (!$hasThreeDayNotice && $hasDayOneNotice) {
+                $hoursSinceDayOneNotice = Carbon::parse($dayOneNotice->sent_at)->diffInHours(Carbon::now());
+                if ($hoursSinceDayOneNotice >= 48) {
+                    $ticket->notification_type = 'unanswered_warning_3_day';
                     $ticketsToNotify->push($ticket);
                     TicketNotification::create([
                         'ticket_id' => $ticket->ticket_id,
-                        'type' => 'unanswered_warning_daily',
+                        'type' => 'unanswered_warning_3_day',
+                        'sent_at' => Carbon::now()
+                    ]);
+                    continue;
+                }
+            }
+
+            // Stage 2: notify once 48 hours after 3-day notice to handle weekend/catch-up delays.
+            if ($hasThreeDayNotice && !$hasFiveDayNotice) {
+                $hoursSinceThreeDayNotice = Carbon::parse($threeDayNotice->sent_at)->diffInHours(Carbon::now());
+
+                if ($hoursSinceThreeDayNotice >= 48) {
+                    $ticket->notification_type = 'unanswered_warning_5_day';
+                    $ticketsToNotify->push($ticket);
+                    TicketNotification::create([
+                        'ticket_id' => $ticket->ticket_id,
+                        'type' => 'unanswered_warning_5_day',
                         'sent_at' => Carbon::now()
                     ]);
                 }
@@ -121,7 +149,7 @@ class unansweredTicketMail extends Command
     {
         try {
             $engineerName = $this->displayName($ticket->assigned_nickname ?? null, $ticket->assigned_to ?? null);
-            $isReminder = ($ticket->notification_type ?? '') === 'unanswered_warning_daily';
+            $warningStage = $this->resolveWarningStage($ticket->notification_type ?? null);
             $email_assignee = $ticket->assigned_to_email;
             $email_cc = CarbonCopy::getCCEmail($ticket->ticket_id);
 
@@ -140,12 +168,16 @@ class unansweredTicketMail extends Command
             $htmlContent = view('mail.unanswered_tickets', [
                 'ticket' => $ticket,
                 'display_name' => $engineerName,
-                'is_reminder' => $isReminder,
+                'warning_stage' => $warningStage,
             ])->render();
 
-            $mail->Subject = $isReminder
-                ? '(TCD Portal Reminder) ' . $engineerName . ', You have Unanswered Tickets'
-                : '(TCD Portal) ' . $engineerName . ', You have Unanswered Tickets';
+            if ($warningStage === 'day5') {
+                $mail->Subject = '(TCD Portal Reminder - 5th Day) ' . $engineerName . ', You have Unanswered Tickets';
+            } else if ($warningStage === 'day3') {
+                $mail->Subject = '(TCD Portal Reminder - 3rd Day) ' . $engineerName . ', You have Unanswered Tickets';
+            } else {
+                $mail->Subject = '(TCD Portal Reminder - 1st Day) ' . $engineerName . ', You have Unanswered Tickets';
+            }
             $mail->Body = $htmlContent;
             $mail->AltBody = strip_tags($htmlContent);
 
@@ -170,7 +202,7 @@ class unansweredTicketMail extends Command
         try {
             $firstTicket = $tickets->first();
             $engineerName = $this->displayName($firstTicket->assigned_nickname ?? null, $firstTicket->assigned_to ?? null);
-            $isReminder = ($firstTicket->notification_type ?? '') === 'unanswered_warning_daily';
+            $warningStage = $this->resolveWarningStage($firstTicket->notification_type ?? null);
             $email_assignee = $firstTicket->assigned_to_email;
 
             if (empty($email_assignee)) {
@@ -191,12 +223,16 @@ class unansweredTicketMail extends Command
             $htmlContent = view('mail.unanswered_tickets_table', [
                 'tickets' => $tickets,
                 'display_name' => $engineerName,
-                'is_reminder' => $isReminder,
+                'warning_stage' => $warningStage,
             ])->render();
 
-            $mail->Subject = $isReminder
-                ? '(TCD Portal Reminder) ' . $engineerName . ', You have ' . $tickets->count() . ' Unanswered Tickets.'
-                : '(TCD Portal) ' . $engineerName . ', You have ' . $tickets->count() . ' Unanswered Tickets.';
+            if ($warningStage === 'day5') {
+                $mail->Subject = '(TCD Portal Reminder - 5th Day) ' . $engineerName . ', You have ' . $tickets->count() . ' Unanswered Tickets.';
+            } else if ($warningStage === 'day3') {
+                $mail->Subject = '(TCD Portal Reminder - 3rd Day) ' . $engineerName . ', You have ' . $tickets->count() . ' Unanswered Tickets.';
+            } else {
+                $mail->Subject = '(TCD Portal Reminder - 1st Day) ' . $engineerName . ', You have ' . $tickets->count() . ' Unanswered Tickets.';
+            }
             $mail->Body = $htmlContent;
             $mail->AltBody = strip_tags($htmlContent);
 
@@ -277,6 +313,19 @@ class unansweredTicketMail extends Command
         return array_values(array_filter($candidates, function ($email) {
             return filter_var($email, FILTER_VALIDATE_EMAIL);
         }));
+    }
+
+    private function resolveWarningStage($notificationType)
+    {
+        if ($notificationType === 'unanswered_warning_5_day') {
+            return 'day5';
+        }
+
+        if ($notificationType === 'unanswered_warning_3_day') {
+            return 'day3';
+        }
+
+        return 'day1';
     }
 
     private function displayName($nickname, $fullName)

@@ -4,13 +4,20 @@
     <h3 style="text-align: center; margin: 16px 0 32px 0; font-size: 16px;">TCD Portal: Unread Tickets Notification</h3>
     <p style="font-size: 14px;">Hi {{ $display_name ?? 'Engineer' }},</p>
 
-    @if(!empty($is_reminder))
+    @if(($warning_stage ?? 'day1') === 'day5')
+        <p style="font-size: 14px;"><strong>Not Yet Marked as read - 5th Day</strong></p>
         <p style="font-size: 14px;">
-            There are TCD Portal tickets that you have not marked as read yet, kindly check to avoid further delays
+            There are TCD Portal tickets that you still have not marked as read yet, kindly provide the necessary action URGENTLY to avoid escalation.
+        </p>
+    @elseif(($warning_stage ?? 'day1') === 'day3')
+        <p style="font-size: 14px;"><strong>Not Yet Marked as read - 3 Days</strong></p>
+        <p style="font-size: 14px;">
+            There are TCD Portal tickets that you have not marked as read yet, kindly check or provide a progress update if you need more time to avoid further delays.
         </p>
     @else
+        <p style="font-size: 14px;"><strong>Not Yet Marked as read - 1st Day</strong></p>
         <p style="font-size: 14px;">
-            There are TCD Portal tickets that you have not read yet, kindly check to avoid delays
+            There are TCD Portal tickets that you have not marked as read yet, kindly check and provide an update as needed.
         </p>
     @endif
 
