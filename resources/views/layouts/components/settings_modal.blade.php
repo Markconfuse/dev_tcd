@@ -38,7 +38,7 @@
                       Filter Data By Year
                       <i class="fas fa-question-circle text-info ml-1" data-toggle="tooltip" data-placement="right"
                         data-html="true"
-                        title="<div class='text-left'>Any list or counter that shows what a user needs to do right now will completely ignore this year filter so you never lose track of open tickets.<br><br><strong>Lists skipping the filter:</strong><br>- Unread Tickets<br>- Unanswered<br>- In Progress<br>- Assigned to Me<br><br>For these, you will see them even if they were filed 5 years ago, as long as they are still open. The year filter applies strictly to historical reporting.</div>"></i>
+                        title="<div class='text-left'><strong>This setting only affects your own account view.</strong><br>It does not change what other users see.<br><br>Use this to filter dashboard/reports by year.<br><br><strong>Not affected by this filter (always shown if still open):</strong><br>- Unread Tickets<br>- Unanswered<br>- In Progress<br>- Assigned to Me<br><br>These action lists stay visible so you do not miss pending work, even if tickets are from older years.</div>"></i>
                     </label>
                     <p class="text-muted small mb-3">Controls the default application year filter.</p>
                     <select name="year" id="yearFilterSetting" class="form-control" style="max-width: 200px;"
