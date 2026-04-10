@@ -157,7 +157,8 @@ Route::post('edit-brand',['as' => 'edit-brand', 'uses' => 'MaintenanceController
 //End of System Maintenance
 
 // Settings
-Route::post('settings/update', ['as' => 'settings.update', 'uses' => 'SettingsController@update']);
+Route::post('settings/engineer-reminder', ['as' => 'settings.engineer_reminder', 'uses' => 'SettingsController@updateEngineerReminder']);
+Route::post('settings/year-filter', ['as' => 'settings.year_filter', 'uses' => 'SettingsController@updateYearFilter']);
 
 Route::get('viewFile/{file_name}',['as' => 'viewFile', 'uses' => 'RequestController@viewFile']);
 

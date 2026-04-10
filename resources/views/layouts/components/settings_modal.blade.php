@@ -29,16 +29,39 @@
           </div>
           <div class="col-9 col-sm-9">
             <div class="tab-content" id="vert-tabs-tabContent" style="padding: 20px; min-height: 480px;">
-              <div class="tab-pane text-left fade show active" id="vert-tabs-general" role="tabpanel"
+              <div class="tab-pane text-left fade show active h-100" id="vert-tabs-general" role="tabpanel"
                 aria-labelledby="vert-tabs-general-tab">
-                <h5>General Settings</h5>
-                <p class="text-muted">General settings configuration will be added here in the future.</p>
+                <form action="{{ route('settings.year_filter') }}" method="post" style="min-height: 440px;">
+                  @csrf
+                  <div class="form-group">
+                    <label for="yearFilterSetting" class="mb-0">
+                      Filter Data By Year
+                      <i class="fas fa-question-circle text-info ml-1" data-toggle="tooltip" data-placement="right"
+                        data-html="true"
+                        title="<div class='text-left'>Any list or counter that shows what a user needs to do right now will completely ignore this year filter so you never lose track of open tickets.<br><br><strong>Lists skipping the filter:</strong><br>- Unread Tickets<br>- Unanswered<br>- In Progress<br>- Assigned to Me<br><br>For these, you will see them even if they were filed 5 years ago, as long as they are still open. The year filter applies strictly to historical reporting.</div>"></i>
+                    </label>
+                    <p class="text-muted small mb-3">Controls the default application year filter.</p>
+                    <select name="year" id="yearFilterSetting" class="form-control" style="max-width: 200px;"
+                      onchange="this.form.submit()">
+                      @php
+                        // Fetch the currently active setting or default to current year.
+                        $currentYearFilter = \App\Setting::where('key', 'year_filter')->where('account_id', Session('userData')->account_id)->value('value') ?? date('Y');
+                        $startYear = 2021;
+                        $endYear = date('Y') + 1; 
+                      @endphp
+                      <option value="All" {{ $currentYearFilter == 'All' ? 'selected' : '' }}>All</option>
+                      @for($y = $endYear; $y >= $startYear; $y--)
+                        <option value="{{ $y }}" {{ $currentYearFilter == $y ? 'selected' : '' }}>{{ $y }}</option>
+                      @endfor
+                    </select>
+                  </div>
+                </form>
               </div>
 
               @if(Session('userData')->account_id == 57610 || Session('userData')->account_id == 57615 || Session('userData')->role_name == 'admin' || Session('userData')->role_name == 'super_user')
                 <div class="tab-pane fade h-100" id="vert-tabs-engineer-reminders" role="tabpanel"
                   aria-labelledby="vert-tabs-engineer-reminders-tab">
-                  <form action="{{ route('settings.update') }}" method="post"
+                  <form action="{{ route('settings.engineer_reminder') }}" method="post"
                     style="min-height: 440px; display: flex; flex-direction: column; justify-content: space-between;">
                     @csrf
                     <div class="form-group">
@@ -120,5 +143,8 @@
       $('#previewReminderBody').html(content);
       $('#settingsPreviewModal').modal('show');
     });
+
+    // Initialize tooltips explicitly inside the modal
+    $('[data-toggle="tooltip"]').tooltip();
   });
 </script>

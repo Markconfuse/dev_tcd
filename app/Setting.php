@@ -9,6 +9,7 @@ class Setting extends Model
     protected $table = 'settings';
 
     protected $fillable = [
+        'account_id',
         'key',
         'value',
         'created_by',
