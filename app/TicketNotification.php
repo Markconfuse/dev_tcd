@@ -33,4 +33,28 @@ class TicketNotification extends Model
             }
         });
     }
+
+    /**
+     * Retrieve notifications safely mapped by Ticket ID 
+     */
+    public static function getBulkNotifications($ticketIds)
+    {
+        return self::whereIn('ticket_id', $ticketIds)
+            ->get()
+            ->keyBy('ticket_id');
+    }
+
+    /**
+     * Securely update a ticket's status tracker state.
+     */
+    public static function logNotification($ticketId, $type)
+    {
+        return self::updateOrCreate(
+            ['ticket_id' => $ticketId],
+            [
+                'type' => $type, 
+                'sent_at' => \Carbon\Carbon::now()
+            ]
+        );
+    }
 }

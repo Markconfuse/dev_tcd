@@ -9,7 +9,6 @@ use App\Mail\UnreadRequestNotif;
 use App\Ticket;
 
 use Carbon\Carbon;
-use PHPMailer\PHPMailer\PHPMailer;
 use Illuminate\Console\Command;
 use Illuminate\Support\Facades\Mail;
 use DB;
@@ -43,6 +42,7 @@ class unreadTicketMail extends Command
             ->ticketIsNotDeleted()
             ->ticketAssignedIsNotDeleted()
             ->where('assign.date_assigned', '<=', Carbon::now()->subHours(24))
+            ->where('assign.date_assigned', '>=', Carbon::now()->subDays(30))
             ->whereNull('et.ticket_id') // Exclude escalated tickets
             ->ticketIsUnread()
             ->ticketIsUnanswered()
@@ -57,70 +57,45 @@ class unreadTicketMail extends Command
             ])
             ->get();
 
+        if ($allTickets->isEmpty()) {
+            $this->info('No unread tickets found.');
+            return;
+        }
+
+        $ticketIds = $allTickets->pluck('ticket_id');
+        $notifications = TicketNotification::getBulkNotifications($ticketIds);
+
         $ticketsToNotify = collect();
 
         foreach ($allTickets as $ticket) {
             $assignedAt = Carbon::parse($ticket->date_assigned);
             $hoursSinceAssigned = $assignedAt->diffInHours(Carbon::now());
 
-            $dayOneNotice = TicketNotification::where('ticket_id', $ticket->ticket_id)
-                ->where('type', 'unread_warning_1_day')
-                ->orderByDesc('sent_at')
-                ->first();
+            $notif = $notifications->get($ticket->ticket_id);
 
-            $hasDayOneNotice = !is_null($dayOneNotice);
-
-            $threeDayNotice = TicketNotification::where('ticket_id', $ticket->ticket_id)
-                ->whereIn('type', ['unread_warning_3_day', 'unread_warning_daily'])
-                ->orderByDesc('sent_at')
-                ->first();
-
-            $hasThreeDayNotice = !is_null($threeDayNotice);
-
-            $hasFiveDayNotice = TicketNotification::where('ticket_id', $ticket->ticket_id)
-                ->where('type', 'unread_warning_5_day')
-                ->exists();
-
-            // Stage 0: notify at/after 1st day if not yet sent.
-            if ($hoursSinceAssigned >= 24 && !$hasDayOneNotice) {
-                $ticket->notification_type = 'unread_warning_1_day';
-                $ticketsToNotify->push($ticket);
-                TicketNotification::create([
-                    'ticket_id' => $ticket->ticket_id,
-                    'type' => 'unread_warning_1_day',
-                    'sent_at' => Carbon::now()
-                ]);
-                continue;
-            }
-
-            // Stage 1: notify at 3rd day, 48 hours after Day 1 notice.
-            if (!$hasThreeDayNotice && $hasDayOneNotice) {
-                $hoursSinceDayOneNotice = Carbon::parse($dayOneNotice->sent_at)->diffInHours(Carbon::now());
-
-                if ($hoursSinceDayOneNotice >= 48) {
-                    $ticket->notification_type = 'unread_warning_3_day';
+            if (!$notif) {
+                // Stage 0: notify at/after 1st day if not yet sent.
+                if ($hoursSinceAssigned >= 24) {
+                    $ticket->notification_type = 'unread_warning_1_day';
                     $ticketsToNotify->push($ticket);
-                    TicketNotification::create([
-                        'ticket_id' => $ticket->ticket_id,
-                        'type' => 'unread_warning_3_day',
-                        'sent_at' => Carbon::now()
-                    ]);
-                    continue;
                 }
-            }
+            } else {
+                $hoursSinceLastNotice = Carbon::parse($notif->sent_at)->diffInHours(Carbon::now());
+                $currentType = $notif->type;
 
-            // Stage 2: notify once 48 hours after Day 3 notice.
-            if ($hasThreeDayNotice && !$hasFiveDayNotice) {
-                $hoursSinceThreeDayNotice = Carbon::parse($threeDayNotice->sent_at)->diffInHours(Carbon::now());
-
-                if ($hoursSinceThreeDayNotice >= 48) {
-                    $ticket->notification_type = 'unread_warning_5_day';
-                    $ticketsToNotify->push($ticket);
-                    TicketNotification::create([
-                        'ticket_id' => $ticket->ticket_id,
-                        'type' => 'unread_warning_5_day',
-                        'sent_at' => Carbon::now()
-                    ]);
+                // Stage 1: change type to day 3
+                if ($currentType === 'unread_warning_1_day') {
+                    if ($hoursSinceLastNotice >= 48) {
+                        $ticket->notification_type = 'unread_warning_3_day';
+                        $ticketsToNotify->push($ticket);
+                    }
+                }
+                // Stage 2: change type to day 5
+                elseif (in_array($currentType, ['unread_warning_3_day', 'unread_warning_daily'])) {
+                    if ($hoursSinceLastNotice >= 48) {
+                        $ticket->notification_type = 'unread_warning_5_day';
+                        $ticketsToNotify->push($ticket);
+                    }
                 }
             }
         }
@@ -156,33 +131,24 @@ class unreadTicketMail extends Command
                 return;
             }
 
-            $mail = $this->setupPHPMailer();
-            $mail->addAddress(trim($email_assignee));
-
             $ccList = $this->transformCC($email_cc);
             if (in_array($warningStage, ['day3', 'day5'])) {
                 $ccList = array_values(array_unique(array_merge($ccList, $this->escalationAdminEmails())));
             }
 
-            foreach ($ccList as $cc) {
-                $mail->addCC($cc);
+            if ($warningStage === 'day5') {
+                $subject = '(TCD Portal Reminder - 5th Day) ' . $engineerName . ', You have Unread Tickets';
+            } else if ($warningStage === 'day3') {
+                $subject = '(TCD Portal Reminder - 3rd Day) ' . $engineerName . ', You have Unread Tickets';
+            } else {
+                $subject = '(TCD Portal Reminder - 1st Day) ' . $engineerName . ', You have Unread Tickets';
             }
 
-            $htmlContent = view('mail.unread_tickets', [
+            $viewData = [
                 'ticket' => $ticket,
                 'display_name' => $engineerName,
                 'warning_stage' => $warningStage,
-            ])->render();
-
-            if ($warningStage === 'day5') {
-                $mail->Subject = '(TCD Portal Reminder - 5th Day) ' . $engineerName . ', You have Unread Tickets';
-            } else if ($warningStage === 'day3') {
-                $mail->Subject = '(TCD Portal Reminder - 3rd Day) ' . $engineerName . ', You have Unread Tickets';
-            } else {
-                $mail->Subject = '(TCD Portal Reminder - 1st Day) ' . $engineerName . ', You have Unread Tickets';
-            }
-            $mail->Body = $htmlContent;
-            $mail->AltBody = strip_tags($htmlContent);
+            ];
 
             \Log::info('Sending unread ticket mail', [
                 'ticket_id' => $ticket->ticket_id,
@@ -191,10 +157,14 @@ class unreadTicketMail extends Command
                 'bcc' => $this->transformBCC(),
             ]);
 
-            $mail->send();
-            sleep(10);
+            Mail::to(trim($email_assignee))
+                ->cc($ccList)
+                ->bcc($this->transformBCC())
+                ->send(new UnreadRequestNotif($subject, 'mail.unread_tickets', $viewData));
 
-            \Log::info("✅ Unread single mail sent to: {$email_assignee}");
+            TicketNotification::logNotification($ticket->ticket_id, $ticket->notification_type);
+
+            \Log::info("✅ Unread single mail queued/sent to: {$email_assignee}");
         } catch (\Exception $e) {
             \Log::error('❌ Unread Single Mail error: ' . $e->getMessage());
         }
@@ -215,34 +185,25 @@ class unreadTicketMail extends Command
                 return;
             }
 
-            $mail = $this->setupPHPMailer();
-            $mail->addAddress(trim($email_assignee));
-
             $allCCs = $this->collectCcEmails($tickets);
             $ccList = $this->transformCC($allCCs);
             if (in_array($warningStage, ['day3', 'day5'])) {
                 $ccList = array_values(array_unique(array_merge($ccList, $this->escalationAdminEmails())));
             }
 
-            foreach ($ccList as $cc) {
-                $mail->addCC($cc);
+            if ($warningStage === 'day5') {
+                $subject = '(TCD Portal Reminder - 5th Day) ' . $engineerName . ', You have Unread Tickets';
+            } else if ($warningStage === 'day3') {
+                $subject = '(TCD Portal Reminder - 3rd Day) ' . $engineerName . ', You have Unread Tickets';
+            } else {
+                $subject = '(TCD Portal Reminder - 1st Day) ' . $engineerName . ', You have Unread Tickets';
             }
 
-            $htmlContent = view('mail.unread_tickets_table', [
+            $viewData = [
                 'tickets' => $tickets,
                 'display_name' => $engineerName,
                 'warning_stage' => $warningStage,
-            ])->render();
-
-            if ($warningStage === 'day5') {
-                $mail->Subject = '(TCD Portal Reminder - 5th Day) ' . $engineerName . ', You have Unread Tickets';
-            } else if ($warningStage === 'day3') {
-                $mail->Subject = '(TCD Portal Reminder - 3rd Day) ' . $engineerName . ', You have Unread Tickets';
-            } else {
-                $mail->Subject = '(TCD Portal Reminder - 1st Day) ' . $engineerName . ', You have Unread Tickets';
-            }
-            $mail->Body = $htmlContent;
-            $mail->AltBody = strip_tags($htmlContent);
+            ];
 
             \Log::info('Sending unread tickets summary', [
                 'assignee_id' => $firstTicket->assigned_to_id ?? null,
@@ -252,39 +213,20 @@ class unreadTicketMail extends Command
                 'bcc' => $this->transformBCC(),
             ]);
 
-            $mail->send();
-            sleep(10);
+            Mail::to(trim($email_assignee))
+                ->cc($ccList)
+                ->bcc($this->transformBCC())
+                ->send(new UnreadRequestNotif($subject, 'mail.unread_tickets_table', $viewData));
 
-            \Log::info("✅ Unread table mail sent to: {$email_assignee} (Count: {$tickets->count()})");
+            foreach ($tickets as $t) {
+                TicketNotification::logNotification($t->ticket_id, $t->notification_type);
+            }
+
+            \Log::info("✅ Unread table mail queued/sent to: {$email_assignee} (Count: {$tickets->count()})");
 
         } catch (\Exception $e) {
             \Log::error('❌ Unread Table Mail error: ' . $e->getMessage());
         }
-    }
-
-    private function setupPHPMailer()
-    {
-        $mail = new PHPMailer(true);
-        $mail->isSMTP();
-        $mail->Host = config('mail.host');
-        $mail->SMTPAuth = true;
-        $mail->Username = config('mail.username');
-        $mail->Password = config('mail.password');
-        $mail->SMTPSecure = config('mail.encryption');
-        $mail->Port = config('mail.port');
-        $mail->isHTML(true);
-        $mail->setFrom('noreply-tcdportal-support@ics.com.ph', 'NoReply:TCDPORTALSupport');
-
-        foreach ($this->transformBCC() as $bcc) {
-            $mail->addBCC($bcc);
-        }
-
-        return $mail;
-    }
-
-    private function transformSendTo($email_assignee)
-    {
-        return $this->normalizeEmails($email_assignee);
     }
 
     private function transformCC($email_cc)

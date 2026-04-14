@@ -6,26 +6,25 @@ use Illuminate\Bus\Queueable;
 use Illuminate\Contracts\Queue\ShouldQueue;
 use Illuminate\Mail\Mailable;
 use Illuminate\Queue\SerializesModels;
-use Illuminate\Http\Request;
-use App\Http\Requests;
-
 
 class UnansweredRequestNotif extends Mailable implements ShouldQueue
 {
     use Queueable, SerializesModels;
 
     public $_subject;
-    public $_content;
+    public $viewName;
+    public $viewData;
 
     /**
      * Create a new message instance.
      *
      * @return void
      */
-    public function __construct($_subject, $_content)
+    public function __construct($_subject, $viewName, $viewData)
     {
         $this->_subject = $_subject;
-        $this->_content = $_content;
+        $this->viewName = $viewName;
+        $this->viewData = $viewData;
     }
 
     /**
@@ -33,11 +32,8 @@ class UnansweredRequestNotif extends Mailable implements ShouldQueue
      *
      * @return $this
      */
-
     public function build()
     {
-        return $this->subject($this->_subject)->view('mail.unanswered_request', [
-            'content' => $this->_content
-        ]);
+        return $this->subject($this->_subject)->view($this->viewName, $this->viewData);
     }
 }
