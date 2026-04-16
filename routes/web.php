@@ -143,6 +143,10 @@ Route::get('getHistory', ['as' => 'getHistory', 'uses' => 'RequestController@get
 
 Route::get('getSideCount', ['as' => 'getSideCount', 'uses' => 'RequestController@getSideCount']);
 
+// Announcements
+Route::get('api/announcements/active', 'AnnouncementController@getActiveAnnouncements');
+Route::post('api/announcements/acknowledge', 'AnnouncementController@acknowledge');
+
 //End of Ajax Request
 
 

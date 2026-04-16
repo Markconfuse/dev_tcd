@@ -65,6 +65,16 @@ return [
             'prefix'   => '',
         ],
 
+        'announcement' => [
+            'driver'   => 'sqlsrv',
+            'host'     => env('DB_ANNOUNCEMENT_HOST', 'ICSSQLSVR03\ICSSLS'),
+            'database' => env('DB_DATABASE_ANNOUNCEMENT', 'devcusto'),
+            'username' => env('DB_ANNOUNCEMENT_USERNAME', 'mobile'),
+            'password' => env('DB_ANNOUNCEMENT_PASSWORD', 'goingmobile'),
+            'charset'  => 'utf8',
+            'prefix'   => '',
+        ],
+
         'sqlite' => [
             'driver' => 'sqlite',
             'database' => env('DB_DATABASE', database_path('database.sqlite')),

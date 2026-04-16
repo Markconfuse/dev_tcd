@@ -57,6 +57,8 @@
 
 <!-- ./wrapper -->
 
+@include('layouts.components.announcement_modal')
+
 <!-- REQUIRED SCRIPTS -->
 
 <!-- jQuery -->
@@ -289,10 +291,119 @@
     })
   }
 
-  $(document).on('click', '.list-notif', function() {
+    $(document).on('click', '.list-notif', function() {
     var ticketID = btoa($(this).attr('id'));
 
     window.open('{{ url('view-request') }}/'+ticketID, '_self');
+  });
+
+  $(document).ready(function() {
+    var activeAnnouncements = [];
+    var currentIndex = 0;
+
+    function showAnnouncement(index) {
+        if(index >= activeAnnouncements.length) {
+            $('#announcementModal').modal('hide');
+            return;
+        }
+        var ann = activeAnnouncements[index];
+        $('#annTitle').text(ann.title);
+        
+        var d = new Date(ann.released_date || ann.created_at);
+        var monthname = ['Jan', 'Feb', 'March', 'April', 'May', 'June', 'July', 'Aug', 'Sept', 'Oct', 'Nov', 'Dec'];
+        $('#annDate').text(monthname[d.getMonth()]+ " " + d.getDate() + ", " + d.getFullYear());
+        
+        $('#annContent').html(ann.content);
+        $('#btnUnderstand').attr('data-id', ann.id);
+
+        if (ann.assets && ann.assets.length > 0) {
+            var filesHtml = '';
+            ann.assets.forEach(function(asset) {
+                var sizeKB = Math.round(asset.file_size / 1024);
+                var fileUrl = asset.fille_url || asset.file_url || asset.file_path || '#';
+                var iconClass = 'fa-file-alt text-secondary';
+                
+                if(asset.mime_type) {
+                    if(asset.mime_type.indexOf('pdf') !== -1) iconClass = 'fa-file-pdf text-danger';
+                    else if(asset.mime_type.indexOf('image') !== -1) iconClass = 'fa-file-image text-info';
+                    else if(asset.mime_type.indexOf('word') !== -1) iconClass = 'fa-file-word text-primary';
+                    else if(asset.mime_type.indexOf('excel') !== -1 || asset.mime_type.indexOf('spreadsheet') !== -1) iconClass = 'fa-file-excel text-success';
+                }
+                
+                filesHtml += '<a href="'+fileUrl+'" target="_blank" class="text-decoration-none d-block mb-2">' +
+                             '<div class="d-flex align-items-center p-2 border rounded bg-light" style="transition: all 0.2s; box-shadow: 0 1px 2px rgba(0,0,0,0.05);" onmouseover="this.style.boxShadow=\'0 2px 5px rgba(0,0,0,0.1)\';" onmouseout="this.style.boxShadow=\'0 1px 2px rgba(0,0,0,0.05)\';">' +
+                             '<div class="mr-3"><i class="fas '+iconClass+' fa-2x"></i></div>' +
+                             '<div class="flex-grow-1 text-dark">' +
+                             '<div class="font-weight-bold text-truncate" style="font-size: 12px; line-height: 1.2; max-width: 200px;" title="'+asset.file_name+'">'+asset.file_name+'</div>' +
+                             '<div class="text-muted small">'+sizeKB+' KB</div>' +
+                             '</div>' +
+                             '<div class="text-primary"><i class="fas fa-download"></i></div>' +
+                             '</div></a>';
+            });
+            $('#annAttachmentsContainer').html(filesHtml).show();
+        } else {
+            $('#annAttachmentsContainer').hide();
+        }
+
+        if(ann.thumbnail_url) {
+            var imgPath = ann.thumbnail_url;
+            $('#annImageContainer').html('<img src="' + imgPath + '" alt="Announcement Preview" style="position: absolute; top: 0; left: 0; width: 100%; height: 100%; object-fit: cover;" />');
+        } else {
+            var ph = '<div class="d-flex flex-column align-items-center justify-content-center text-muted h-100 w-100 p-4 text-center bg-light border-left">';
+            ph += '<div class="rounded-circle bg-secondary d-flex align-items-center justify-content-center mb-3" style="width: 64px; height: 64px;">';
+            ph += '<i class="far fa-image fa-2x text-white"></i></div>';
+            ph += '<p class="font-weight-bold mb-1">No Image</p><p class="small">No thumbnail provided for this announcement.</p></div>';
+            $('#annImageContainer').html(ph);
+        }
+
+        $('#announcementModal').modal('show');
+    }
+
+    if (auth) {
+        $.ajax({
+            url: "{{ url('api/announcements/active') }}",
+            type: "GET",
+            success: function(response) {
+                if(response.status === 'success' && response.data.length > 0) {
+                    activeAnnouncements = response.data;
+                    currentIndex = 0;
+                    showAnnouncement(currentIndex);
+                }
+            }
+        });
+    }
+
+    $('#btnUnderstand').on('click', function() {
+        var id = $(this).attr('data-id');
+        var btn = $(this);
+        btn.prop('disabled', true).html('<i class="fas fa-spinner fa-spin"></i> Processing...');
+        
+        $.ajax({
+            url: "{{ url('api/announcements/acknowledge') }}",
+            type: "POST",
+            data: {
+                announcement_id: id,
+                _token: "{{ csrf_token() }}"
+            },
+            success: function() {
+                btn.prop('disabled', false).text('I Understand');
+                currentIndex++;
+                showAnnouncement(currentIndex);
+            },
+            error: function() {
+                btn.prop('disabled', false).text('I Understand');
+                currentIndex++;
+                showAnnouncement(currentIndex);
+            }
+        });
+    });
+
+    $('.announcement-close').on('click', function() {
+       // Only allowed to close visually? But next ones if they don't click "I understand" won't show.
+       // The modal 'data-keyboard=false' prevents escape closing. They must understand.
+       // So clicking close could mean "skip this one" visually for testing? 
+       // I'll leave standard behavior.
+    });
   });
 
 </script>
