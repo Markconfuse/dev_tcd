@@ -42,8 +42,8 @@ class unansweredTicketMail extends Command
             ->ticketStatusIsNot([4])
             ->ticketIsNotDeleted()
             ->ticketAssignedIsNotDeleted()
-            ->where('assign.date_assigned', '<=', Carbon::now()->subHours(24))
-            ->where('assign.date_assigned', '>=', Carbon::now()->subDays(30)) // Window added here
+            ->where('assign.date_assigned', '<=', Carbon::now()->subMinute())
+            ->where('assign.date_assigned', '>=', Carbon::now()->subDay())
             ->whereNull('et.ticket_id') // Exclude escalated tickets
             ->ticketIsRead()
             ->ticketIsUnanswered()
