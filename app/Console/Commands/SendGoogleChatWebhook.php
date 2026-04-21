@@ -37,12 +37,12 @@ class SendGoogleChatWebhook extends Command
             return;
         }
 
-        // Fetching unassigned tickets older than 60 minutes.
         $unassignedTickets = Ticket::leftJoin('vw_crm_accounts as esrid', 'ticket.requestor_id', '=', 'esrid.AccountID')
             ->ticketIsNotDeleted()
             ->statusID(1)
             ->ExcludeAppsdev()
-            ->where('ticket.date_created', '<=', Carbon::now()->subMinutes(60))
+            ->where('ticket.date_created', '>=', Carbon::now()->subDays(5))
+            ->where('ticket.date_created', '<=', Carbon::now()->subHour())
             ->select([
                 'ticket.ticket_id',
                 'ticket.subject',
