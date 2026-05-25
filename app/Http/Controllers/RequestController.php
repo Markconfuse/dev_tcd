@@ -96,7 +96,7 @@ class RequestController extends Controller
 		
 		$_cc = ESDAccount::where('role_id','<>','3')->orWhere('account_id', '=', 57786)->orWhere('account_id', '=', 57812)->get();
 		
-
+ 
         $_engineer = ESDAccount::where('role_id', 3)->get();
 
         $_brand = LibBrand::orderBy('brand', 'asc')->cursor();
@@ -104,6 +104,42 @@ class RequestController extends Controller
         $this->saveLogs('Viewed Compose Request');
 
         return view('requestor.compose_request.cr_main', compact('_requestType', '_ao', '_cc', '_engineer','_brand'));
+    }
+
+    public function getAgenticPayload(Request $request)
+    {
+        $payloadId = $request->query('payload_id');
+        if (!$payloadId) {
+            return response()->json(['success' => false, 'message' => 'Missing payload_id'], 400);
+        }
+
+        try {
+            $aiPayload = \App\LlmAgenticPayload::where('id', $payloadId)
+                ->where('is_used', false)
+                ->where('is_expired', false)
+                ->where('expired_at', '>', \Carbon\Carbon::now())
+                ->first();
+
+            if ($aiPayload) {
+                // Mark as used immediately upon fetch as requested by the user
+                $aiPayload->is_used = false;
+                $aiPayload->save();
+
+                // Decode payload content (handles both string and array cast versions)
+                $aiPayloadData = is_string($aiPayload->payload) ? json_decode($aiPayload->payload, true) : $aiPayload->payload;
+
+                return response()->json([
+                    'success' => true,
+                    'data' => $aiPayloadData
+                ]);
+            }
+
+            return response()->json(['success' => false, 'message' => 'Payload not found, expired, or already used'], 404);
+
+        } catch (\Exception $e) {
+            \Log::error("Failed to retrieve agentic payload: " . $e->getMessage());
+            return response()->json(['success' => false, 'message' => 'Database connection/query error: ' . $e->getMessage()], 500);
+        }
     }
 
     public function postRequest(Request $request)

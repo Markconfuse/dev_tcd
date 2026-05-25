@@ -45,6 +45,16 @@ return [
             'prefix'   => '',
         ],
 
+        'sales_intelligence' => [
+            'driver'   => 'sqlsrv',
+            'host'     => env('DB_AI_HOST', 'AI-DATABASE\AINSTEIN'),
+            'database' => env('DB_AI_DATABASE', 'SalesIntelligence'),
+            'username' => env('DB_AI_USERNAME', 'SalesBert'),
+            'password' => env('DB_AI_PASSWORD', '$al3sB3rt_Analyst!'),
+            'charset'  => 'utf8',
+            'prefix'   => '',
+        ],
+
         'proc_login' => [
             'driver'   => 'sqlsrv',
             'host'     => 'APPSDEV\APPSDEVSERVER',

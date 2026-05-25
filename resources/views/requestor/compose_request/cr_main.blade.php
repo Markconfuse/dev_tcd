@@ -146,13 +146,19 @@
 
 @section('js')
     <script type="text/javascript">
+      console.log("TCD Portal compose script tag loaded");
 
       $(function() {
+          console.log("TCD Portal compose document ready fired");
 
           window.role = '<?php echo Session('userData')->role_name; ?>';         
           window.account_group = '<?php echo Session('userData')->AccountGroup; ?>';         
 
-          $('#mdl_custval').modal('show');
+          var urlParams = new URLSearchParams(window.location.search);
+          var payloadId = urlParams.get('payload_id');
+          if (!payloadId) {
+              $('#mdl_custval').modal('show');
+          }
 
           $('#unique1').val($('#unique').val());
 
@@ -219,6 +225,160 @@
             $('#mdl_custval').modal('hide');
             intelliSub();
           })
+
+          function markdownToHtml(markdown) {
+            if (!markdown) return '';
+            let html = markdown
+              .replace(/&/g, '&amp;')
+              .replace(/</g, '&lt;')
+              .replace(/>/g, '&gt;')
+              .replace(/\*\*(.*?)\*\*/g, '<strong>$1</strong>')
+              .replace(/__(.*?)__/g, '<strong>$1</strong>')
+              .replace(/^### (.*?)$/gm, '<h3>$1</h3>')
+              .replace(/^## (.*?)$/gm, '<h2>$1</h2>')
+              .replace(/^# (.*?)$/gm, '<h1>$1</h1>')
+              .replace(/^\s*-\s+(.*?)$/gm, '<li>$1</li>')
+              .replace(/^\s*\*\s+(.*?)$/gm, '<li>$1</li>')
+              .replace(/(<li>[\s\S]*?<\/li>)/g, '<ul>$1</ul>')
+              .replace(/<\/ul>\s*<ul>/g, '')
+              .split(/\n{2,}/)
+              .map(para => {
+                para = para.trim();
+                if (!para) return '';
+                if (para.startsWith('<h') || para.startsWith('<ul') || para.startsWith('<li')) {
+                  return para;
+                }
+                return '<p>' + para.replace(/\n/g, '<br>') + '</p>';
+              })
+              .join('\n');
+            return html;
+          }
+
+          console.log("Checking payloadId in URL...", payloadId);
+          if (payloadId) {
+            console.log("AI draft detected. Hiding customer modal and sending AJAX request for payload:", payloadId);
+            $('#mdl_custval').modal('hide');
+
+            $.get('{{ url("/get-agentic-payload") }}', { payload_id: payloadId }, function(response) {
+              console.log("Received response from get-agentic-payload:", response);
+              if (response && response.success && response.data) {
+                var payload = response.data;
+                console.log("Payload data successfully fetched:", payload);
+
+                // 1. Populate AO
+                if (payload.ao) {
+                  var targetAo = payload.ao.toLowerCase().trim();
+                  $('#aoID option').each(function() {
+                    var optText = $(this).text().toLowerCase().trim();
+                    var optVal = $(this).val().toLowerCase().trim();
+                    if (optText.indexOf(targetAo) !== -1 || targetAo.indexOf(optText) !== -1 || optVal === targetAo) {
+                      $(this).prop('selected', true);
+                      return false;
+                    }
+                  });
+                  $('#aoID').trigger('change');
+                }
+
+                // 2. Populate Project Name
+                if (payload.project_name) {
+                  $('#projectName').val(payload.project_name).trigger('change');
+                }
+
+                // 3. Populate Request Type
+                if (payload.request_type) {
+                  var targetType = payload.request_type.toLowerCase().trim();
+                  $('#requestTypeID option').each(function() {
+                    var optText = $(this).text().toLowerCase().trim();
+                    if (optText.indexOf(targetType) !== -1 || targetType.indexOf(optText) !== -1) {
+                      $(this).prop('selected', true);
+                      return false;
+                    }
+                  });
+                  $('#requestTypeID').trigger('change');
+                }
+
+                // 4. Populate Brand
+                if (payload.brand) {
+                  var targetBrand = payload.brand.toLowerCase().trim();
+                  var selectedBrands = [];
+                  $('#brandID option').each(function() {
+                    var optText = $(this).text().toLowerCase().trim();
+                    if (targetBrand.indexOf(optText) !== -1 || optText.indexOf(targetBrand) !== -1) {
+                      selectedBrands.push($(this).val());
+                    }
+                  });
+                  if (selectedBrands.length > 0) {
+                    $('#brandID').val(selectedBrands).trigger('change');
+                  }
+                }
+
+                // 5. Populate Assign To (Engineer)
+                if (payload.assign_to) {
+                  var targetAssign = payload.assign_to.toLowerCase().trim();
+                  var selectedEngineers = [];
+                  $('#engrID option').each(function() {
+                    var optText = $(this).text().toLowerCase().trim();
+                    if (targetAssign.indexOf(optText) !== -1 || optText.indexOf(targetAssign) !== -1) {
+                      selectedEngineers.push($(this).val());
+                    }
+                  });
+                  if (selectedEngineers.length > 0) {
+                    $('#engrID').val(selectedEngineers).trigger('change');
+                  }
+                }
+
+                // 6. Populate Description (Content) into Summernote
+                if (payload.body_content) {
+                  var htmlContent = markdownToHtml(payload.body_content);
+                  $('#requestContent').summernote('code', htmlContent);
+                }
+
+                // 7. Auto-populate Customer Name and request Customer ID from liveSearch API
+                if (payload.customer_name) {
+                  var custName = payload.customer_name;
+                  $('#customerName').val(custName);
+
+                  var searchUrl = 'https://ice-cream.ics.com.ph/api/liveSearch?key=' + btoa(unescape(encodeURIComponent(custName)));
+                  $.get(searchUrl, function(data) {
+                    try {
+                      var qryRes = jQuery.parseJSON(JSON.stringify(data.data));
+                      if (qryRes && qryRes.length > 0) {
+                        var bestMatch = qryRes[0];
+                        for (var i = 0; i < qryRes.length; i++) {
+                          if (qryRes[i].CustomerName.toLowerCase().trim() === custName.toLowerCase().trim()) {
+                            bestMatch = qryRes[i];
+                            break;
+                          }
+                        }
+                        $('#customerID').val(bestMatch.CustomerID);
+                        $('#customerName').val(bestMatch.CustomerName);
+                        console.log("Auto-selected Customer:", bestMatch.CustomerName, "ID:", bestMatch.CustomerID);
+                        
+                        if (typeof intelliSub === 'function') {
+                          intelliSub();
+                        }
+                        if (payload.subject) {
+                          $('#subject').val(payload.subject);
+                        }
+                      }
+                    } catch (e) {
+                      console.error("Error auto-selecting customer:", e);
+                    }
+                  });
+                } else {
+                  if (payload.subject) {
+                    $('#subject').val(payload.subject);
+                  }
+                }
+              } else {
+                console.error("Failed to load agentic payload:", response ? response.message : "unknown error");
+                $('#mdl_custval').modal('show');
+              }
+            }).fail(function(err) {
+              console.error("Error loading agentic payload from API:", err);
+              $('#mdl_custval').modal('show');
+            });
+          }
 
       })
     </script>

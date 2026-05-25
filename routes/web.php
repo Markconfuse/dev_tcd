@@ -49,6 +49,7 @@ Auth::routes();
 // Side Bar Routes
 
 Route::get('compose-request', ['as' => 'compose-request', 'uses' => 'RequestController@composeRequest']);
+Route::get('get-agentic-payload', ['as' => 'get-agentic-payload', 'uses' => 'RequestController@getAgenticPayload']);
 
 Route::get('sampe', ['as' => 'sampe', 'uses' => 'RequestController@sampe']);
 
