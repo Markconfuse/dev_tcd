@@ -18,6 +18,7 @@ class Kernel extends ConsoleKernel
         \App\Console\Commands\unansweredTicketMail::class,
         \App\Console\Commands\unreadTicketMail::class,
         \App\Console\Commands\SendGoogleChatWebhook::class,
+        \App\Console\Commands\SendGoogleChatEscalationWebhook::class,
     ];
 
     /**
@@ -40,10 +41,9 @@ class Kernel extends ConsoleKernel
 
         $schedule->command('mail:unanswered')->weekdays()->hourly()->between('08:00', '18:00');
         $schedule->command('mail:unread')->weekdays()->hourly()->between('08:00', '18:00');
-
+        $schedule->command('webhook:send-chat-escalation')->weekdays()->everyMinute()->between('08:00', '18:00');
         $schedule->command('webhook:send-chat')->weekdays()->everyMinute()->between('08:00', '18:00');
     }
-
 
     /**
      * Register the commands for the application.
